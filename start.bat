@@ -1,0 +1,19 @@
+@echo off
+echo Starting Rentora Services...
+
+echo Starting API Gateway on port 8000...
+start "API Gateway" cmd /k ".\venv\Scripts\activate && uvicorn gateway.main:app --host 127.0.0.1 --port 8000 --reload"
+
+echo Starting Auth Service on port 8001...
+start "Auth Service" cmd /k ".\venv\Scripts\activate && uvicorn auth_service.main:app --host 127.0.0.1 --port 8001 --reload"
+
+echo Starting Profile Service on port 8002...
+start "Profile Service" cmd /k ".\venv\Scripts\activate && uvicorn profile_service.main:app --host 127.0.0.1 --port 8002 --reload"
+
+echo Starting Property Service on port 8003...
+start "Property Service" cmd /k ".\venv\Scripts\activate && uvicorn property_service.main:app --host 127.0.0.1 --port 8003 --reload"
+
+echo Starting Vite Frontend...
+start "Frontend" cmd /k "cd frontend && npm run dev"
+
+echo All services started in separate windows!

@@ -1,0 +1,33 @@
+# Dependency directories
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+
+# Build outputs
+dist/
+build/
+*.pyc
+*.pyo
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Cypress
+cypress/videos/
+cypress/screenshots/

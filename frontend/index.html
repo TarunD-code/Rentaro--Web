@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rentora - Premium Property Rentals</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme') || 'trust';
+        const bgMap = {
+          'trust': '#FFFFFF',
+          'modern': '#ECF0F1',
+          'luxury': '#FAF3E0',
+          'minimal': '#FFFFFF',
+          'warm': '#F5F5DC',
+          'cool': '#F0FFFF',
+          'bold': '#0A0A0A',
+          'earthy': '#C2B280',
+          'pastel': '#FFF8F0',
+          'dark': '#0A0A0A'
+        };
+        document.body.style.backgroundColor = bgMap[theme];
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
