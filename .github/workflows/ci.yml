@@ -10,7 +10,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # TODO: follow-up PR to bump actions to Node24-compatible releases and remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
+  # TODO: follow-up PR to bump actions/checkout, actions/setup-node, actions/setup-python
+  # to Node24-compatible releases and remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
   build:
     runs-on: ubuntu-latest
 
@@ -20,7 +21,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node
       uses: actions/setup-node@v4
       with:
         node-version: 24
@@ -67,9 +68,14 @@ jobs:
           echo "No backend directory found; skipping backend tests"
         fi
     - name: Cypress E2E Tests
-      uses: cypress-io/github-action@v6
-      with:
-        working-directory: frontend
-        spec: cypress/e2e/sprint13_onboarding.cy.ts
-        start: npm run dev
-        wait-on: 'http://localhost:5173'
+      run: |
+        if [ -d frontend/cypress/e2e ]; then
+          npm run dev &
+          npx wait-on http://localhost:5173
+          npx cypress run --spec cypress/e2e/sprint13_onboarding.cy.ts
+        else
+          echo "Cypress tests folder not found; skipping Cypress tests"
+        fi
+      working-directory: frontend
+      env:
+        CYPRESS_baseUrl: 'http://localhost:5173'

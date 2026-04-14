@@ -1,6 +1,6 @@
 describe('Rentora Epic 4 Stabilization & Fixes', () => {
   const adminEmail = 'admin@rentora.com';
-
+  const _tenantEmail = 'tenant@rentora.com'; // TODO: use or remove
   const password = 'admin123';
 
   beforeEach(() => {
