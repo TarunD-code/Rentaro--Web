@@ -10,7 +10,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # TODO: update actions/checkout, actions/setup-node, and actions/setup-python to versions that support Node 24 in a follow-up PR.
+  # TODO: follow-up PR to remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 after bumping actions to Node24-compatible releases
   build:
     runs-on: ubuntu-latest
 
@@ -23,7 +23,7 @@ jobs:
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 24
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     - name: Install dependencies
@@ -36,7 +36,7 @@ jobs:
       run: npm run lint
       working-directory: frontend
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     - name: Install backend dependencies (safe)
