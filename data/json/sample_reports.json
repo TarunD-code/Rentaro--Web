@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "total_revenue": 250000,
+    "pending_payouts": 45000,
+    "occupancy_rate_30d": 0.92,
+    "failed_refunds": 500.0,
+    "active_mandates": 105
+  },
+  "maintenance": {
+    "avg_resolution_hours": 36,
+    "open": 12,
+    "overdue": 3
+  },
+  "ledger": {
+    "period": "30d",
+    "fees_collected": 15000,
+    "taxes_collected": 2700,
+    "owner_payouts": 250000,
+    "refunds": 5000
+  },
+  "reconciliation": {
+    "mismatches": [
+      {"payout_id": 999, "status_local": "processed", "status_bank": "failed", "suggested_action": "Reverse ledger entry"}
+    ],
+    "total_unreconciled": 1
+  }
+}

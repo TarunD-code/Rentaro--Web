@@ -40,10 +40,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         python -m pytest tests/test_onboarding_service.py -v
+        python -m pytest analytics_service/tests/test_analytics.py -v
+    - name: Run Analytics Data Seeder
+      run: make seed-sprint15
     - name: Cypress E2E Tests
       uses: cypress-io/github-action@v6
       with:
         working-directory: frontend
-        spec: cypress/e2e/sprint13_onboarding.cy.ts
+        spec: cypress/e2e/sprint13_onboarding.cy.ts,cypress/e2e/sprint14_payouts.cy.ts,cypress/e2e/sprint15_analytics.cy.ts
         start: npm run dev
         wait-on: 'http://localhost:5173'
