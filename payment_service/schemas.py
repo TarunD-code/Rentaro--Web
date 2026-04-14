@@ -177,3 +177,53 @@ class SettlementOut(BaseModel):
     created_at: datetime.datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── Accounting & Payouts ─────────────────────────────────────────────────────
+
+class OwnerBalanceOut(BaseModel):
+    owner_id: str
+    available_balance: float
+    pending_balance: float
+
+    model_config = {"from_attributes": True}
+
+
+class LedgerEntryOut(BaseModel):
+    id: int
+    owner_id: str
+    tenant_id: Optional[str]
+    property_id: Optional[int]
+    transaction_id: Optional[int]
+    payout_id: Optional[int]
+    entry_type: str
+    amount: float
+    description: Optional[str]
+    created_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PayoutCreate(BaseModel):
+    amount: float = Field(..., gt=0)
+    fund_account_id: str
+
+
+class PayoutOut(BaseModel):
+    id: int
+    owner_id: str
+    amount: float
+    currency: str
+    status: str
+    razorpay_payout_id: Optional[str]
+    failure_reason: Optional[str]
+    initiated_at: datetime.datetime
+    processed_at: Optional[datetime.datetime]
+    payout_mode: str
+
+    model_config = {"from_attributes": True}
+
+
+class ReconciliationUpload(BaseModel):
+    csv_data: str # Base64 or plain string
+

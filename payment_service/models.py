@@ -14,6 +14,22 @@ class TransactionType(str, enum.Enum):
     settlement = "settlement"
 
 
+class PayoutStatus(str, enum.Enum):
+    pending = "pending"
+    processed = "processed"
+    reversed = "reversed"
+    cancelled = "cancelled"
+    failed = "failed"
+
+
+class LedgerEntryType(str, enum.Enum):
+    rent_credit = "rent_credit"
+    platform_fee = "platform_fee"
+    tax_deduction = "tax_deduction"
+    payout_debit = "payout_debit"
+    refund = "refund"
+
+
 class PaymentMethod(str, enum.Enum):
     upi = "upi"
     card = "card"
@@ -161,4 +177,97 @@ class SettlementRecord(Base):
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+# ── Owner Balance ───────────────────────────────────────────────────────────
+
+class OwnerBalance(Base):
+    """Tracks the running total available balance of an owner"""
+    __tablename__ = "owner_balances"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(String, nullable=False, index=True, unique=True)
+    available_balance = Column(Float, nullable=False, default=0.0)
+    pending_balance = Column(Float, nullable=False, default=0.0)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+# ── Ledger Entry ────────────────────────────────────────────────────────────
+
+class LedgerEntry(Base):
+    """Immutable record of money movement within the system"""
+    __tablename__ = "ledger_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(String, nullable=False, index=True)
+    tenant_id = Column(String, nullable=True, index=True)
+    property_id = Column(Integer, nullable=True, index=True)
+    transaction_id = Column(Integer, nullable=True) # links to PaymentTransaction
+    payout_id = Column(Integer, nullable=True) # links to Payout if it's a debit
+
+    entry_type = Column(String, nullable=False, default=LedgerEntryType.rent_credit.value)
+    amount = Column(Float, nullable=False) # positive for owner credits, negative for debits (fees/payouts)
+    description = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+# ── Fee and Tax Records ─────────────────────────────────────────────────────
+
+class FeeRecord(Base):
+    """Tracks platform deductions taken from gross rent"""
+    __tablename__ = "fee_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ledger_entry_id = Column(Integer, nullable=False, index=True)
+    owner_id = Column(String, nullable=False, index=True)
+    transaction_id = Column(Integer, nullable=True)
+    
+    fee_type = Column(String, nullable=False, default="platform_commission")
+    fee_percentage = Column(Float, nullable=False, default=5.0)
+    amount_deducted = Column(Float, nullable=False)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class TaxRecord(Base):
+    """Tracks tax (GST/TDS) applied to fees or payouts"""
+    __tablename__ = "tax_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fee_record_id = Column(Integer, nullable=True)
+    amount = Column(Float, nullable=False)
+    tax_type = Column(String, nullable=False, default="GST") # GST, TDS
+    tax_rate = Column(Float, nullable=False, default=18.0)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+# ── Payouts (Settlement to Bank) ────────────────────────────────────────────
+
+class Payout(Base):
+    """Batch payout job sending funds to Owner's bank"""
+    __tablename__ = "payouts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(String, nullable=False, index=True)
+    
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="INR")
+    status = Column(String, nullable=False, default=PayoutStatus.pending.value)
+    
+    razorpay_payout_id = Column(String, nullable=True, unique=True, index=True)
+    fund_account_id = Column(String, nullable=True)
+    failure_reason = Column(String, nullable=True)
+    
+    initiated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True)
+    
+    # E.g. manual request or scheduled cron
+    payout_mode = Column(String, default="scheduled")
+    
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
 
