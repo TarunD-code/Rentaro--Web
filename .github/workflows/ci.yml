@@ -10,7 +10,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # TODO: follow-up PR to remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24 after bumping actions to Node24-compatible releases
+  # TODO: follow-up PR to bump actions to Node24-compatible releases and remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
   build:
     runs-on: ubuntu-latest
 
@@ -35,8 +35,8 @@ jobs:
     - name: Lint
       run: npm run lint
       working-directory: frontend
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Setup Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     - name: Install backend dependencies (safe)
@@ -58,9 +58,9 @@ jobs:
           echo "Running backend tests in ./backend"
           cd backend
           if command -v pytest >/dev/null 2>&1; then
-            pytest || echo "pytest returned non-zero exit code"
+            pytest || { echo "pytest failed"; exit 1; }
           else
-            echo "pytest not available; skipping backend tests"
+            echo "pytest not installed; skipping backend tests"
           fi
           cd ..
         else
