@@ -1,5 +1,5 @@
 import { Box, Typography, Grid, Card, CardContent, Avatar, useTheme, alpha, Button, Paper } from '@mui/material';
-import { AddCircle, Search } from '@mui/icons-material';
+import { AddCircle, Search, AccountBalanceWallet } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import HostAnalytics from '../HostAnalytics';
@@ -34,6 +34,32 @@ const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ agreements, metrics }) 
       {/* Onboarding & Agreements */}
       <Box mb={3}>
         <OnboardingStatusCard role="owner" />
+      </Box>
+
+      {/* Payouts & Accounting */}
+      <Box mb={3}>
+        <Card 
+          onClick={() => navigate('/payouts')}
+          sx={{ 
+            cursor: 'pointer',
+            borderRadius: 4,
+            backgroundImage: 'linear-gradient(135deg, #0A3D62 0%, #062842 100%)',
+            color: 'white',
+            '&:hover': { opacity: 0.95 }
+          }}
+        >
+          <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
+            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', mr: 2 }}>
+              <AccountBalanceWallet />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>Wallet & Payouts</Typography>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                Manage bank transfers, monthly statements, and platform ledger.
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
       </Box>
 
       <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>{t('quick_actions') || 'Property Management'}</Typography>

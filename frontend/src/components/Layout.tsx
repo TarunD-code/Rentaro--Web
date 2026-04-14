@@ -110,7 +110,7 @@ const Layout: React.FC<Props> = ({ children }) => {
     { label: t('profile'), icon: <AccountCircle />, path: '/profile' }
   ];
 
-  const currentNavValue = navItems.findIndex(item => location.pathname.startsWith(item.path));
+
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

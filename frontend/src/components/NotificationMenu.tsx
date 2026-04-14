@@ -11,7 +11,7 @@ import {
   alpha,
   useTheme
 } from '@mui/material';
-import { Notifications, Circle, CheckCircle } from '@mui/icons-material';
+import { Notifications, Circle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface RentoraNotification {

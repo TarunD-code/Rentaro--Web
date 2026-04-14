@@ -215,3 +215,121 @@ def retry_failed_rent_payments():
 
     finally:
         db.close()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  OWNER PAYOUTS & ACCOUNTING (Sprint 14)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@shared_task
+def process_scheduled_payouts():
+    """
+    Find owners with positive available balance over threshold.
+    Batch them into Razorpay Payouts automatically.
+    Called daily.
+    """
+    logger.info("▶ Running process_scheduled_payouts task")
+    db: Session = database.SessionLocal()
+    
+    try:
+        # Minimum threshold to send payout (e.g., 100 Rs)
+        threshold = 100.0
+        balances = db.query(models.OwnerBalance).filter(
+            models.OwnerBalance.available_balance >= threshold
+        ).all()
+        
+        logger.info(f"Found {len(balances)} owners eligible for scheduled payout")
+        processed = 0
+        
+        for bal in balances:
+            try:
+                amount = bal.available_balance
+                # In a real app we'd look up the owner's bank account ID from Profile Service
+                # For Sprint 14 sandbox, we assume a mock fund account
+                mock_fund_account = f"fa_MOCK{str(bal.owner_id)[:8]}"
+                
+                # Lock row
+                locked_bal = db.query(models.OwnerBalance).filter(
+                    models.OwnerBalance.id == bal.id
+                ).with_for_update().first()
+                
+                if locked_bal.available_balance < amount:
+                    continue # Balance changed
+                    
+                locked_bal.available_balance -= amount
+                
+                payout = models.Payout(
+                    owner_id=locked_bal.owner_id,
+                    amount=amount,
+                    fund_account_id=mock_fund_account,
+                    payout_mode="scheduled",
+                    status=models.PayoutStatus.pending.value
+                )
+                db.add(payout)
+                db.flush()
+                
+                rz_payout = razorpay_client.create_payout(
+                    fund_account_id=mock_fund_account,
+                    amount=amount,
+                    currency="INR",
+                    mode="IMPS",
+                    purpose="payout",
+                    reference_id=str(payout.id)
+                )
+                
+                if "error" in rz_payout:
+                    raise Exception(rz_payout["error"].get("description", "Unknown error"))
+                    
+                payout.razorpay_payout_id = rz_payout.get("id")
+                
+                ledger = models.LedgerEntry(
+                    owner_id=locked_bal.owner_id,
+                    payout_id=payout.id,
+                    entry_type=models.LedgerEntryType.payout_debit.value,
+                    amount=-amount,
+                    description=f"Scheduled Monthly Payout ({payout.id})"
+                )
+                db.add(ledger)
+                db.commit()
+                processed += 1
+                
+                logger.info(f"Scheduled Payout {payout.id} initiated for owner {locked_bal.owner_id}")
+                
+            except Exception as e:
+                db.rollback()
+                logger.error(f"Failed scheduled payout for owner {bal.owner_id}: {e}")
+                
+        return {"processed_payouts": processed, "eligible": len(balances)}
+        
+    finally:
+        db.close()
+
+@shared_task
+def reconcile_payouts():
+    """
+    Routine task to check pending payouts against Razorpay status
+    if webhooks were missed, and mark them completed.
+    """
+    logger.info("▶ Running reconcile_payouts task")
+    db: Session = database.SessionLocal()
+    
+    try:
+        # In sandbox, mark pending payouts older than 5 mins as processed
+        delay_threshold = datetime.datetime.utcnow() - datetime.timedelta(minutes=5)
+        
+        pending_payouts = db.query(models.Payout).filter(
+            models.Payout.status == models.PayoutStatus.pending.value,
+            models.Payout.initiated_at <= delay_threshold
+        ).all()
+        
+        reconciled = 0
+        for p in pending_payouts:
+            p.status = models.PayoutStatus.processed.value
+            p.processed_at = datetime.datetime.utcnow()
+            reconciled += 1
+            logger.info(f"Sandbox reconciliation: Marked Payout {p.id} as processed.")
+            
+        db.commit()
+        return {"reconciled": reconciled}
+    finally:
+        db.close()

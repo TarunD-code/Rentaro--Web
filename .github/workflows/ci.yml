@@ -31,3 +31,19 @@ jobs:
     - name: Lint
       run: npm run lint
       working-directory: frontend
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Run Backend Tests
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        python -m pytest tests/test_onboarding_service.py -v
+    - name: Cypress E2E Tests
+      uses: cypress-io/github-action@v6
+      with:
+        working-directory: frontend
+        spec: cypress/e2e/sprint13_onboarding.cy.ts
+        start: npm run dev
+        wait-on: 'http://localhost:5173'
