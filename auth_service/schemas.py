@@ -4,7 +4,7 @@ from typing import Optional
 class UserCreate(BaseModel):
     email_or_phone: str
     password: str
-    role: str # "tenant" | "owner"
+    role: str # "tenant" | "owner" | "admin"
 
 class UserOut(BaseModel):
     id: int
@@ -12,8 +12,7 @@ class UserOut(BaseModel):
     role: str
     is_verified: bool
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
 class OTPVerify(BaseModel):
     email_or_phone: str

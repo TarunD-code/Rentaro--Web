@@ -19,7 +19,7 @@ const HeroSearch: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
@@ -36,8 +36,12 @@ const HeroSearch: React.FC = () => {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const handleSearch = (q: string) => {
-    navigate(`/listings?q=${encodeURIComponent(q)}`);
+  const handleSearch = (q: string, lat?: number, lon?: number) => {
+    let url = `/listings?q=${encodeURIComponent(q)}`;
+    if (lat !== undefined && lon !== undefined) {
+      url += `&lat=${lat}&lng=${lon}`;
+    }
+    navigate(url);
     setShowSuggestions(false);
   };
 
@@ -110,11 +114,11 @@ const HeroSearch: React.FC = () => {
                 {suggestions.map((s, i) => (
                   <ListItemButton 
                     key={i} 
-                    onClick={() => handleSearch(s)}
+                    onClick={() => handleSearch(s.name, s.lat, s.lon)}
                     sx={{ py: 2, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) } }}
                   >
                     <LocationOn sx={{ mr: 2, color: 'text.secondary', fontSize: 20 }} />
-                    <ListItemText primary={s} />
+                    <ListItemText primary={s.name} />
                   </ListItemButton>
                 ))}
               </List>

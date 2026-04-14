@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;background:#f8f9fa;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:linear-gradient(135deg,#2980b9,#3498db);padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:22px;">New Assignment</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;">Rentora Maintenance</p>
+    </div>
+    <div style="padding:30px;">
+      <p>Dear {{ vendor_name }},</p>
+      <p>You have been assigned a new maintenance task:</p>
+      <div style="background:#f0f8ff;border:2px solid #2980b9;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:4px 0;"><strong>Category:</strong> {{ category }}</p>
+        <p style="margin:4px 0;"><strong>Issue:</strong> {{ title }}</p>
+        <p style="margin:4px 0;"><strong>Property:</strong> #{{ property_id }}</p>
+        <p style="margin:4px 0;"><strong>Estimated Date:</strong> {{ estimated_date }}</p>
+      </div>
+      <p>Please log in to your Rentora dashboard to accept and update this task.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{{ task_url }}" style="display:inline-block;background:#0A3D62;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:700;">View Task</a>
+      </div>
+    </div>
+    <div style="padding:20px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee;">Automated email from Rentora.</div>
+  </div>
+</body>
+</html>

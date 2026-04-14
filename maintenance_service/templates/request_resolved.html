@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;background:#f8f9fa;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:linear-gradient(135deg,#27ae60,#2ecc71);padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:22px;">Request Resolved &#10004;</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;">Rentora Maintenance</p>
+    </div>
+    <div style="padding:30px;">
+      <p>Dear {{ tenant_name }},</p>
+      <p>Your maintenance request has been resolved:</p>
+      <div style="background:#f0faf0;border:2px solid #27ae60;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:4px 0;"><strong>Category:</strong> {{ category }}</p>
+        <p style="margin:4px 0;"><strong>Issue:</strong> {{ title }}</p>
+        <p style="margin:4px 0;"><strong>Status:</strong> <span style="color:#27ae60;font-weight:700;">Resolved</span></p>
+        <p style="margin:4px 0;"><strong>Resolution:</strong> {{ resolution_notes }}</p>
+      </div>
+      <p>If the issue persists, you can reopen the request from your dashboard.</p>
+    </div>
+    <div style="padding:20px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee;">Automated email from Rentora.</div>
+  </div>
+</body>
+</html>

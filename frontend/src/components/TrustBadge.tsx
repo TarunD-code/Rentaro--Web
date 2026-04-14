@@ -1,31 +1,44 @@
 import React from 'react';
-import { ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { Chip } from '@mui/material';
+import { Verified, PendingActions, Cancel } from '@mui/icons-material';
 
 interface Props {
-  status: string; // 'verified', 'pending', 'rejected'
+  status: string; // 'verified', 'pending', 'rejected', 'not_submitted', etc
 }
 
 const TrustBadge: React.FC<Props> = ({ status }) => {
   if (status === 'verified') {
     return (
-      <span className="badge badge-success">
-        <ShieldCheck size={16} /> Verified User
-      </span>
+      <Chip 
+        icon={<Verified />} 
+        label="Verified Host" 
+        color="success" 
+        size="small" 
+        variant="outlined" 
+      />
     );
   }
   
-  if (status === 'pending') {
+  if (status === 'pending_review' || status === 'pending') {
     return (
-      <span className="badge badge-warning">
-        <Clock size={16} /> KYC Pending
-      </span>
+      <Chip 
+        icon={<PendingActions />} 
+        label="KYC Pending" 
+        color="warning" 
+        size="small" 
+        variant="outlined" 
+      />
     );
   }
 
   return (
-    <span className="badge badge-error">
-      <XCircle size={16} /> Verification Failed
-    </span>
+    <Chip 
+      icon={<Cancel />} 
+      label="Unverified" 
+      color="error" 
+      size="small" 
+      variant="outlined" 
+    />
   );
 };
 

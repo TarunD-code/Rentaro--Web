@@ -11,43 +11,129 @@ import {
   useTheme,
   alpha,
   Paper,
-  Chip
+  Chip,
+  FormControlLabel,
+  Checkbox,
+  Slider,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  FormGroup
 } from '@mui/material';
 import { 
   Search, 
   GridView, 
   Map as MapIcon, 
   Tune,
-  LocationOn
+  Train
 } from '@mui/icons-material';
+import { useSearchParams } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
+import MapPopupCard from '../components/MapPopupCard';
 import { PropertyGridSkeleton } from '../components/SkeletonLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+const MapUpdater = ({ center, zoom }: { center: [number, number], zoom: number }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center[0] !== 0) {
+      map.setView(center, zoom, { animate: true });
+    }
+  }, [center, zoom, map]);
+  return null;
+};
 
 const Listings: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   
   const [properties, setProperties] = useState<any[]>([]);
+  const [pois, setPois] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [priceRange, setPriceRange] = useState<number[]>([0, 200000]);
+  const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [otherAmenity, setOtherAmenity] = useState('');
+  const [availableFrom, setAvailableFrom] = useState('');
+  const [isFurnished, setIsFurnished] = useState(false);
+  const [isPetFriendly, setIsPetFriendly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
+  const [mapZoom, setMapZoom] = useState(11);
+
+  useEffect(() => {
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const q = searchParams.get('q');
+
+    if (lat && lng) {
+      const coords: [number, number] = [parseFloat(lat), parseFloat(lng)];
+      setMapCenter(coords);
+      setViewMode('map');
+      fetchPois(coords[0], coords[1]);
+    } else if (q) {
+      setSearchQuery(q);
+    }
+
+    if (navigator.geolocation && !lat && viewMode === 'map') {
+      navigator.geolocation.getCurrentPosition(
+        (position) => setMapCenter([position.coords.latitude, position.coords.longitude]),
+        () => console.log("Geolocation access denied or unavailable.")
+      );
+    }
+  }, [searchParams, viewMode]);
+
+  const fetchPois = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/property/location/pois?lat=${lat}&lng=${lng}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPois(data.pois || []);
+      }
+    } catch (err) {
+      console.error("POI Fetch Error", err);
+    }
+  };
 
   const fetchProperties = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchQuery) params.append('q', searchQuery);
-      if (minPrice) params.append('min_price', minPrice);
-      if (maxPrice) params.append('max_price', maxPrice);
+      params.append('min_price', priceRange[0].toString());
+      params.append('max_price', priceRange[1].toString());
+      if (propertyTypes.length) params.append('property_type', propertyTypes.join(','));
+      if (selectedAmenities.length || otherAmenity) {
+        const allAm = [...selectedAmenities];
+        if (otherAmenity) allAm.push(otherAmenity);
+        params.append('amenities', allAm.join(','));
+      }
+      if (availableFrom) params.append('available_from', availableFrom);
+      if (isFurnished) params.append('furnished', 'true');
+      if (isPetFriendly) params.append('pet_friendly', 'true');
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/property/?${params.toString()}`);
       const data = await response.json();
@@ -195,22 +281,48 @@ const Listings: React.FC = () => {
             <Paper 
               sx={{ 
                 position: 'absolute', 
-                top: 60, 
+                top: '100%', 
                 left: 0, 
-                width: 'calc(80% - 16px)', 
-                zIndex: 10, 
+                width: { xs: '100%', md: 'calc(80% - 16px)' }, 
+                zIndex: 2000, 
                 borderRadius: 3, 
-                boxShadow: theme.shadows[4],
-                overflow: 'hidden'
+                boxShadow: theme.shadows[8],
+                mt: 1,
+                overflow: 'hidden',
+                border: `1px solid ${theme.palette.divider}`
               }}
             >
-              {suggestions.map((s, i) => (
+              {(suggestions as any[]).map((s, i) => (
                 <Box 
-                  key={i} 
-                  onClick={() => { setSearchQuery(s); setSuggestions([]); fetchProperties(); }}
-                  sx={{ p: 2, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, borderBottom: i < suggestions.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}
+                   key={i} 
+                   onClick={() => {
+                     setSearchQuery(s.name);
+                     setSuggestions([]);
+                     if (s.lat && s.lon) {
+                       const lat = parseFloat(s.lat);
+                       const lon = parseFloat(s.lon);
+                       setMapCenter([lat, lon]);
+                       setMapZoom(16); // High zoom for exact location
+                       // Fix: Only fetch POIs if in map view, don't force switch view
+                       if (viewMode === 'map') {
+                         fetchPois(lat, lon);
+                       }
+                     }
+                     setTimeout(fetchProperties, 100);
+                   }}
+                   sx={{ 
+                     p: 2, 
+                     cursor: 'pointer', 
+                     '&:hover': { bgcolor: 'action.hover' }, 
+                     borderBottom: i < suggestions.length - 1 ? '1px solid' : 'none', 
+                     borderColor: 'divider',
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 2
+                   }}
                 >
-                   <Typography variant="body2">{s}</Typography>
+                   <MapIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                   <Typography variant="body2">{s.name}</Typography>
                 </Box>
               ))}
             </Paper>
@@ -229,31 +341,120 @@ const Listings: React.FC = () => {
 
         {showFilters && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
-            <Box display="flex" gap={3} p={2} bgcolor={alpha(theme.palette.primary.main, 0.05)} borderRadius={4}>
-              <TextField 
-                label="Min Price" 
-                size="small" 
-                type="number" 
-                value={minPrice} 
-                onChange={(e) => setMinPrice(e.target.value)} 
+            <Box display="flex" gap={4} p={3} mb={3} bgcolor={alpha(theme.palette.primary.main, 0.03)} borderRadius={4} flexWrap="wrap" sx={{ border: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
+              
+              {/* Price Slider */}
+              <Box display="flex" flexDirection="column" gap={1} flex={1} minWidth={200}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>Price Range (â‚¹)</Typography>
+                <Slider
+                  value={priceRange}
+                  onChange={(_, newValue) => setPriceRange(newValue as number[])}
+                  valueLabelDisplay="auto"
+                  min={0}
+                  max={200000}
+                  step={5000}
+                  sx={{ mx: 1, width: 'calc(100% - 16px)' }}
+                />
+              </Box>
+
+              {/* Property Type Multi-select */}
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Property Type</InputLabel>
+                <Select
+                  multiple
+                  value={propertyTypes}
+                  onChange={(e) => setPropertyTypes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                  label="Property Type"
+                >
+                  {['Apartment', 'Villa', 'Studio', 'Penthouse'].map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Date Filter */}
+              <TextField
+                label="Available From"
+                type="date"
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                value={availableFrom}
+                onChange={(e) => setAvailableFrom(e.target.value)}
               />
-              <TextField 
-                label="Max Price" 
-                size="small" 
-                type="number" 
-                value={maxPrice} 
-                onChange={(e) => setMaxPrice(e.target.value)} 
-              />
-              <Button variant="contained" size="small" onClick={fetchProperties}>Apply</Button>
-              <Button size="small" onClick={() => { setMinPrice(''); setMaxPrice(''); setSearchQuery(''); fetchProperties(); }}>Reset</Button>
+
+              {/* Advanced Flags */}
+              <Box display="flex" alignItems="center" gap={1}>
+                <FormControlLabel control={<Checkbox checked={isFurnished} onChange={(e) => setIsFurnished(e.target.checked)} size="small" />} label="Furnished" />
+                <FormControlLabel control={<Checkbox checked={isPetFriendly} onChange={(e) => setIsPetFriendly(e.target.checked)} size="small" />} label="Pet-Friendly" />
+              </Box>
+
+              {/* Amenities Checkboxes */}
+              <Box width="100%">
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={1}>Amenities Requirements</Typography>
+                <FormGroup row>
+                  {['Pool', 'Gym', 'Parking', 'CCTV', 'Generator', 'Lift', 'Garden'].map((amenity) => (
+                    <FormControlLabel 
+                       key={amenity}
+                       control={
+                         <Checkbox 
+                           size="small" 
+                           checked={selectedAmenities.includes(amenity)}
+                           onChange={(e) => {
+                              if (e.target.checked) setSelectedAmenities([...selectedAmenities, amenity]);
+                              else setSelectedAmenities(selectedAmenities.filter(a => a !== amenity));
+                           }}
+                         />
+                       } 
+                       label={<Typography variant="body2">{amenity}</Typography>} 
+                    />
+                  ))}
+                </FormGroup>
+                <TextField 
+                  size="small" 
+                  placeholder="Other (specify)" 
+                  value={otherAmenity} 
+                  onChange={(e) => setOtherAmenity(e.target.value)} 
+                  sx={{ mt: 1, width: 200 }}
+                />
+              </Box>
+
+              {/* Action Buttons */}
+              <Box width="100%" display="flex" gap={2} mt={1}>
+                <Button variant="contained" onClick={fetchProperties} sx={{ borderRadius: 3, px: 4 }}>Apply Filters</Button>
+                <Button 
+                  onClick={() => { 
+                    setPriceRange([0, 200000]); setPropertyTypes([]); setSelectedAmenities([]); 
+                    setOtherAmenity(''); setAvailableFrom(''); setIsFurnished(false); setIsPetFriendly(false); 
+                    setSearchQuery(''); fetchProperties(); 
+                  }}
+                  sx={{ borderRadius: 3 }}
+                >
+                  Reset All
+                </Button>
+              </Box>
             </Box>
           </motion.div>
         )}
 
         <Box display="flex" gap={1} flexWrap="wrap">
           <Typography variant="body2" sx={{ mr: 1, py: 0.5, fontWeight: 600 }}>Quick Filters:</Typography>
-          {['Apartment', 'Villa', 'Studio', '< 20k', 'Pet Friendly'].map((filter, i) => (
-             <Chip key={i} label={filter} size="small" variant="outlined" clickable sx={{ borderRadius: 6 }} />
+          {['Apartment', 'Villa', 'Studio', 'Parking', 'Pool'].map((filter, i) => (
+             <Chip 
+               key={i} 
+               label={filter} 
+               size="small" 
+               variant="outlined" 
+               clickable 
+               sx={{ borderRadius: 6 }} 
+               onClick={() => {
+                 if (['Apartment', 'Villa', 'Studio'].includes(filter)) {
+                   setPropertyTypes([filter]);
+                 } else {
+                   setSelectedAmenities([filter]);
+                 }
+                 setTimeout(fetchProperties, 100);
+               }}
+             />
           ))}
         </Box>
       </Paper>
@@ -288,7 +489,7 @@ const Listings: React.FC = () => {
           </Grid>
         </AnimatePresence>
       ) : (
-        /* Mock Map View */
+        /* Live Map View */
         <Box 
           sx={{ 
             height: '600px', 
@@ -299,44 +500,51 @@ const Listings: React.FC = () => {
             bgcolor: 'background.paper'
           }}
         >
-          <Box 
-             sx={{ 
-               width: '100%', 
-               height: '100%', 
-               background: 'transparent',
-               display: 'flex',
-               alignItems: 'center',
-               justifyContent: 'center',
-               flexDirection: 'column'
-             }}
-          >
-             <MapIcon sx={{ fontSize: 80, mb: 2, opacity: 0.3 }} />
-             <Typography variant="h6" fontWeight={700} color="text.secondary">Interactive Map View</Typography>
-             <Typography variant="body2" color="text.secondary">Mock map integration for this phase.</Typography>
-             
-             {[1, 2, 3, 4, 5].map((_, i) => (
-               <Box 
-                 key={i}
-                 sx={{ 
-                   position: 'absolute', 
-                   top: `${20 + i * 15}%`, 
-                   left: `${30 + i * 12}%`,
-                   bgcolor: 'primary.main',
-                   color: '#fff',
-                   px: 1.5,
-                   py: 0.5,
-                   borderRadius: 4,
-                   boxShadow: 4,
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: 0.5
-                 }}
-               >
-                 <LocationOn sx={{ fontSize: 16 }} />
-                 <Typography variant="caption" fontWeight="bold">₹ {20+i}k</Typography>
-               </Box>
-             ))}
-          </Box>
+          <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+            <MapUpdater center={mapCenter} zoom={mapZoom} />
+            <TileLayer
+              attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url={`https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY || 'mock_key'}`}
+            />
+            
+            {/* Property Markers */}
+            <MarkerClusterGroup>
+              {filteredProperties.map((property, idx) => {
+                const lat = property.address_geo_lat || (mapCenter[0] + (Math.random() - 0.5) * 0.05);
+                const lng = property.address_geo_lng || (mapCenter[1] + (Math.random() - 0.5) * 0.05);
+                return (
+                  <Marker key={property.id} position={[lat, lng]}>
+                    <Popup closeButton={false} className="custom-property-popup">
+                      <MapPopupCard property={property} />
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MarkerClusterGroup>
+
+            {/* POI Markers */}
+            {pois.map((poi, idx) => (
+              <Marker 
+                key={`poi-${idx}`} 
+                position={[poi.lat, poi.lng]}
+                icon={L.divIcon({
+                  html: `<div style="background: white; border-radius: 50%; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; color: ${poi.category === 'metro' ? '#1a73e8' : poi.category === 'hospital' ? '#d93025' : '#5f6368'}">
+                    ${poi.category === 'metro' ? '<span class="material-icons" style="font-size: 16px">train</span>' : 
+                      poi.category === 'hospital' ? '<span class="material-icons" style="font-size: 16px">local_hospital</span>' : 
+                      '<span class="material-icons" style="font-size: 16px">place</span>'}
+                  </div>`,
+                  className: 'custom-poi-icon',
+                  iconSize: [24, 24]
+                })}
+              >
+                <Popup>
+                  <Typography variant="subtitle2">{poi.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">{poi.category.toUpperCase()}</Typography>
+                  {poi.distance && <Typography variant="caption" display="block">~{poi.distance}m away</Typography>}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
         </Box>
       )}
     </Box>

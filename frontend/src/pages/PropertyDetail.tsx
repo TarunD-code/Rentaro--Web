@@ -20,12 +20,34 @@ import {
   Share, 
   FavoriteBorder, 
   EmojiObjects,
-  ChevronLeft
+  ChevronLeft,
+  DirectionsRun,
+  Commute
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPropertyById } from '../api/properties';
 import type { PropertyDetail as PropertyType } from '../api/properties';
 import { Helmet } from 'react-helmet-async';
+import TrustBadge from '../components/TrustBadge';
+import ChatBox from '../components/ChatBox';
+import { Rating, TextField } from '@mui/material';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
+
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
 
 // Mock Child Components for first pass
 const Gallery: React.FC<{ media: any[] }> = ({ media }) => {
@@ -93,9 +115,9 @@ const HostCard: React.FC<{ host: any }> = ({ host }) => {
       <Box display="flex" alignItems="center" gap={2} mb={2}>
         <Avatar sx={{ width: 56, height: 56, bgcolor: theme.palette.primary.main }}>{host.name[0]}</Avatar>
         <Box>
-          <Box display="flex" alignItems="center" gap={0.5}>
+          <Box display="flex" alignItems="center" gap={1} mb={0.5}>
             <Typography variant="h6" fontWeight={700}>{host.name}</Typography>
-            {host.verified && <Verified sx={{ color: 'primary.main', fontSize: 18 }} />}
+            <TrustBadge status={host.verified ? 'verified' : 'unverified'} />
           </Box>
           <Typography variant="caption" color="text.secondary">Response time: {host.responseTime}</Typography>
         </Box>
@@ -109,17 +131,122 @@ export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const theme = useTheme();
   const navigate = useNavigate();
-  const [property, setProperty] = useState<PropertyType | null>(null);
+  const [property, setProperty] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newReviewText, setNewReviewText] = useState('');
+  const [newReviewRating, setNewReviewRating] = useState<number | null>(0);
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [commuteData, setCommuteData] = useState<any>(null);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setProfile(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const handleGenerateAgreement = async () => {
+    if (!id) return;
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/property/agreements/generate`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                property_id: parseInt(id), 
+                tenant_id: 'mock-tenant-id' // In real app, select from inquiries
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            navigate(`/agreements/${data.id}`);
+        }
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchReviews = async (propId: string) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/property/${propId}/reviews`);
+      if (res.ok) {
+        setReviews(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleScheduleVisit = async () => {
+    if (!selectedDate || !id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/property/visits`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          property_id: parseInt(id), 
+          requested_slot: selectedDate.toISOString() 
+        })
+      });
+      if (res.ok) {
+        alert("Visit request sent successfully!");
+        setSelectedDate(null);
+      } else {
+        alert("Failed to send visit request.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (id) {
       getPropertyById(id).then(data => {
         setProperty(data);
         setLoading(false);
+        // Fetch Location POIs
+        fetch(`${import.meta.env.VITE_API_URL}/property/location/pois?lat=${data.address.geo.lat}&lng=${data.address.geo.lng}`)
+          .then(res => res.json())
+          .then(setCommuteData)
+          .catch(err => console.error("Commute Error", err));
       });
+      fetchReviews(id);
+      fetchProfile();
     }
   }, [id]);
+
+
+  const handleReviewSubmit = async () => {
+    if (!newReviewRating || !id) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${import.meta.env.VITE_API_URL}/property/${id}/reviews`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ rating: newReviewRating, text: newReviewText })
+      });
+      setNewReviewText('');
+      setNewReviewRating(0);
+      fetchReviews(id);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   if (loading || !property) {
     return (
@@ -188,18 +315,80 @@ export default function PropertyDetail() {
             </Box>
 
             <Box mb={5}>
-              <Typography variant="h5" fontWeight={700} gutterBottom>Amenities</Typography>
-              <Grid container spacing={2}>
-                {property.amenities.map((a, i) => (
-                  <Grid key={i} size={{ xs: 6, sm: 4 }}>
-                    <Box display="flex" alignItems="center" gap={1.5} p={2} border={`1px solid ${theme.palette.divider}`} borderRadius={3}>
-                       <EmojiObjects sx={{ color: 'primary.main', fontSize: 20 }} />
-                       <Typography variant="body2">{a}</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+              <Typography variant="h5" fontWeight={700} gutterBottom>Location & Neighborhood</Typography>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 5, border: `1px solid ${theme.palette.divider}`, bgcolor: alpha(theme.palette.primary.main, 0.02), mb: 3 }}>
+                 <Typography variant="subtitle1" fontWeight={700} mb={2}>Nearby Points of Interest</Typography>
+                 <Grid container spacing={2}>
+                    {commuteData?.pois?.map((p: any, i: number) => (
+                      <Grid key={i} size={{ xs: 12, sm: 4 }}>
+                         <Box display="flex" alignItems="center" gap={1.5}>
+                            <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', width: 32, height: 32 }}>
+                               {p.category === 'metro' || p.category === 'bus' ? <Commute sx={{ fontSize: 18 }} /> : <DirectionsRun sx={{ fontSize: 18 }} />}
+                            </Avatar>
+                            <Box>
+                               <Typography variant="body2" fontWeight={700}>{p.name}</Typography>
+                               <Typography variant="caption" color="text.secondary">{p.route?.duration}m ({p.route?.distance}km)</Typography>
+                            </Box>
+                         </Box>
+                      </Grid>
+                    ))}
+                 </Grid>
+              </Paper>
+
+              <Box sx={{ height: 350, borderRadius: 6, overflow: 'hidden', border: `1px solid ${theme.palette.divider}` }}>
+                <MapContainer center={[property.address.geo.lat, property.address.geo.lng]} zoom={14} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+                    url={`https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY || 'mock_key'}`}
+                  />
+                  {/* Main property marker */}
+                  <Marker position={[property.address.geo.lat, property.address.geo.lng]}>
+                    <Popup>{property.title}</Popup>
+                  </Marker>
+                  {/* POI markers */}
+                  {commuteData?.pois?.map((p: any, i: number) => (
+                    <Marker key={i} position={[p.lat, p.lng]}>
+                       <Popup>{p.name} ({p.category})</Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </Box>
             </Box>
+
+            {/* REVIEWS SECTION */}
+            <Divider sx={{ my: 4 }} />
+            <Box mb={5}>
+              <Typography variant="h5" fontWeight={700} gutterBottom>Reviews & Ratings</Typography>
+              <Box mb={3} p={3} border={`1px solid ${theme.palette.divider}`} borderRadius={4}>
+                <Typography variant="subtitle1" fontWeight={600} mb={1}>Write a Review</Typography>
+                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                   <Rating value={newReviewRating} onChange={(_, v) => setNewReviewRating(v)} />
+                </Box>
+                <TextField 
+                   fullWidth multiline rows={3} placeholder="Share your experience..." 
+                   value={newReviewText} onChange={e => setNewReviewText(e.target.value)}
+                   sx={{ mb: 2 }}
+                />
+                <Button variant="contained" sx={{ mt: 2 }} onClick={handleReviewSubmit}>Submit Review</Button>
+              </Box>
+              
+              <Box display="flex" flexDirection="column" gap={3}>
+                {reviews.length === 0 ? (
+                   <Typography variant="body2" color="text.secondary">No reviews yet. Be the first!</Typography>
+                ) : (
+                   reviews.map((rev: any) => (
+                     <Box key={rev.id} p={2} bgcolor={alpha(theme.palette.background.paper, 0.5)} borderRadius={3} border={`1px solid ${theme.palette.divider}`}>
+                        <Box display="flex" alignItems="center" gap={1} mb={1}>
+                          <Rating value={rev.rating} readOnly size="small" />
+                          <Typography variant="caption" color="text.secondary">{new Date(rev.created_at).toLocaleDateString()}</Typography>
+                        </Box>
+                        <Typography variant="body2">{rev.text}</Typography>
+                     </Box>
+                   ))
+                )}
+              </Box>
+            </Box>
+
           </Grid>
 
           {/* Sidebar */}
@@ -222,16 +411,37 @@ export default function PropertyDetail() {
                 
                 <Box display="flex" alignItems="center" gap={1} mb={4}>
                    <Star sx={{ color: '#FFB800' }} />
-                   <Typography variant="subtitle1" fontWeight={700}>4.8</Typography>
-                   <Typography variant="caption" color="text.secondary">(124 reviews)</Typography>
+                   <Typography variant="subtitle1" fontWeight={700}>{property.average_rating ? property.average_rating.toFixed(1) : 'New'}</Typography>
+                   <Typography variant="caption" color="text.secondary">({property.reviews_count || 0} reviews)</Typography>
                 </Box>
 
-                <Button variant="contained" fullWidth size="large" sx={{ height: 60, borderRadius: 3, mb: 2 }}>
+                <Box mb={4}>
+                  <Typography variant="subtitle2" fontWeight={700} gutterBottom>Pick a Visit Date</Typography>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DatePicker 
+                      value={selectedDate} 
+                      onChange={(newValue) => setSelectedDate(newValue)}
+                      sx={{ width: '100%' }}
+                    />
+                  </LocalizationProvider>
+                </Box>
+
+                <Button 
+                   variant="contained" fullWidth size="large" sx={{ height: 60, borderRadius: 3, mb: 2 }}
+                   onClick={() => setChatOpen(true)}
+                >
                   Contact Host
                 </Button>
-                <Button variant="outlined" fullWidth size="large" sx={{ height: 60, borderRadius: 3 }}>
+                <Button 
+                  variant="outlined" fullWidth size="large" 
+                  sx={{ height: 60, borderRadius: 3 }}
+                  onClick={handleScheduleVisit}
+                  disabled={!selectedDate}
+                >
                   Schedule a Visit
                 </Button>
+
+
                 
                 <Typography variant="caption" display="block" textAlign="center" mt={2} color="text.secondary">
                    No booking fees for first-time tenants.
@@ -239,10 +449,38 @@ export default function PropertyDetail() {
               </Paper>
 
               <HostCard host={property.host} />
+
+              {(profile?.role === 'owner' || profile?.role === 'admin') && (
+                <Box mt={4}>
+                  <Button 
+                    variant="contained" 
+                    color="secondary" 
+                    fullWidth 
+                    size="large" 
+                    sx={{ height: 60, borderRadius: 3 }}
+                    onClick={handleGenerateAgreement}
+                  >
+                    Generate Agreement
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
+                    Initiate digital rental contract with tenant.
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Grid>
+
         </Grid>
       </Container>
+      
+      {chatOpen && (
+         <ChatBox 
+            propertyId={property.id} 
+            hostId={property.host.id} 
+            hostName={property.host.name} 
+            onClose={() => setChatOpen(false)} 
+         />
+      )}
     </Box>
   );
 }

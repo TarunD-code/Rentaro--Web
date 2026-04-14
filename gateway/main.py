@@ -14,7 +14,7 @@ app = FastAPI(title="Rentora API Gateway")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,6 +25,9 @@ app.mount("/static", StaticFiles(directory="uploads"), name="static")
 AUTH_SERVICE_URL = "http://127.0.0.1:8001"
 PROFILE_SERVICE_URL = "http://127.0.0.1:8002"
 PROPERTY_SERVICE_URL = "http://127.0.0.1:8003"
+PAYMENT_SERVICE_URL = "http://127.0.0.1:8004"
+MAINTENANCE_SERVICE_URL = "http://127.0.0.1:8005"
+ONBOARDING_SERVICE_URL = "http://127.0.0.1:8006"
 
 # Reusable async HTTP client (avoids connection leak)
 http_client = httpx.AsyncClient(timeout=10.0)
@@ -63,22 +66,39 @@ async def reverse_proxy(request: Request, upstream_url: str, prefix_to_strip: st
         
         resp_headers = dict(response.headers)
         resp_headers.pop("transfer-encoding", None)
-        resp_headers.pop("content-length", None) # Let StreamingResponse handle it
+        resp_headers.pop("content-length", None)
+
+        resp_headers["Access-Control-Allow-Origin"] = "*"
+        resp_headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        resp_headers["Access-Control-Allow-Headers"] = "*"
+
+        if response.status_code >= 500:
+            logger.error(f"Upstream Critical Error from {url}: {response.content}")
+            return StreamingResponse(
+                iter([b'{"detail": "The requested service is momentarily unavailable. Please try again in a few seconds."}']),
+                status_code=502,
+                headers={"Content-Type": "application/json", **resp_headers}
+            )
 
         logger.info(f"← {response.status_code} from {url}")
-
         return StreamingResponse(
             iter([response.content]),
             status_code=response.status_code,
             headers=resp_headers,
         )
     except httpx.RequestError as exc:
-        logger.error(f"✗ Upstream unreachable: {upstream_url} — {exc}")
+        logger.error(f"✗ Network failure connecting to {upstream_url}: {exc}")
         return StreamingResponse(
-            iter([b'{"detail": "Upstream service unavailable or timed out"}']),
-            status_code=502,
-            headers={"Content-Type": "application/json"}
+            iter([b'{"detail": "System connectivity issue. Please ensure all backend services are running and try again."}']),
+            status_code=503,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*"
+            }
         )
+
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
@@ -100,6 +120,12 @@ async def gateway_router(request: Request, path: str):
         return await reverse_proxy(request, PROFILE_SERVICE_URL, prefix_to_strip="profile")
     elif path.startswith("property"):
         return await reverse_proxy(request, PROPERTY_SERVICE_URL, prefix_to_strip="property")
+    elif path.startswith("payment"):
+        return await reverse_proxy(request, PAYMENT_SERVICE_URL, prefix_to_strip="payment")
+    elif path.startswith("maintenance"):
+        return await reverse_proxy(request, MAINTENANCE_SERVICE_URL, prefix_to_strip="maintenance")
+    elif path.startswith("onboarding"):
+        return await reverse_proxy(request, ONBOARDING_SERVICE_URL, prefix_to_strip="onboarding")
     
     return StreamingResponse(
         iter([b'{"detail": "Route not found"}']),

@@ -2,9 +2,11 @@ from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header, s
 from sqlalchemy.orm import Session
 import jwt
 from typing import List, Optional
+from sqlalchemy import func
 
 from . import models, schemas, database
 from .media_processor import MediaProcessor
+from .location import provider as loc_provider
 
 SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"  
 ALGORITHM = "HS256"
@@ -42,6 +44,7 @@ def create_property(
         title=prop_data.title,
         description=prop_data.description,
         address=prop_data.address,
+        property_type=prop_data.property_type,
         price=prop_data.price,
         amenities=prop_data.amenities
     )
@@ -50,11 +53,42 @@ def create_property(
     db.refresh(new_prop)
     return new_prop
 
+@app.put("/properties/{property_id}/status")
+def update_property_status(
+    property_id: int,
+    data: dict,
+    db: Session = Depends(database.get_db),
+):
+    """Update property status (used by payment service for auto-relisting)."""
+    import logging
+    logger = logging.getLogger("property_service")
+
+    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    new_status = data.get("status", "available")
+    valid_statuses = ["available", "occupied", "maintenance", "unlisted"]
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+
+    prop.status = new_status
+    if new_status == "available":
+        import datetime
+        prop.available_from = data.get("available_from") or datetime.datetime.utcnow()
+
+    db.commit()
+    db.refresh(prop)
+    logger.info(f"Property #{property_id} status updated to '{new_status}'")
+    return {"id": prop.id, "status": prop.status, "available_from": str(prop.available_from)}
+
 @app.get("/", response_model=List[schemas.PropertyOut])
 def list_properties(
     q: Optional[str] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
+    property_type: Optional[str] = None,
+    amenities: Optional[str] = None,
     featured: Optional[bool] = None,
     limit: Optional[int] = 100,
     db: Session = Depends(database.get_db)
@@ -67,11 +101,47 @@ def list_properties(
         query = query.filter(models.Property.price >= min_price)
     if max_price is not None:
         query = query.filter(models.Property.price <= max_price)
+    if property_type:
+        query = query.filter(models.Property.property_type == property_type)
+    if amenities:
+        # Check if the property amenities string contains the requested amenities (comma separated matching)
+        for amt in amenities.split(","):
+            query = query.filter(models.Property.amenities.contains(amt.strip()))
     if featured is not None:
         query = query.filter(models.Property.is_featured == featured)
         
     properties = query.limit(limit).all()
-    return properties
+    
+    # Manually map to handle MediaItem field mismatches (url vs raw_url, etc.)
+    results = []
+    for prop in properties:
+        # Create media items list
+        media_items = []
+        for m in prop.media:
+            media_items.append({
+                "id": m.id,
+                "type": m.file_type or "image",
+                "url": m.raw_url,
+                "thumbnailUrl": m.thumb_url,
+                "mime": m.mime_type,
+                "size": m.size
+            })
+            
+        results.append({
+            "id": prop.id,
+            "owner_id": prop.owner_id,
+            "title": prop.title,
+            "description": prop.description,
+            "address": prop.address,
+            "property_type": prop.property_type,
+            "price": prop.price,
+            "amenities": prop.amenities,
+            "commute_score": prop.commute_score,
+            "created_at": prop.created_at,
+            "media": media_items
+        })
+        
+    return results
 
 @app.get("/{property_id}", response_model=schemas.PropertyDetail)
 def get_property_detail(
@@ -110,33 +180,46 @@ def get_property_detail(
             "size": m.size
         })
 
+    # Get Reviews aggregation
+    avg_rating = db.query(func.avg(models.Review.rating)).filter(models.Review.property_id == property_id).scalar() or 0.0
+    reviews_count = db.query(func.count(models.Review.id)).filter(models.Review.property_id == property_id).scalar() or 0
+
     return {
         "id": prop.id,
         "title": prop.title,
         "description": prop.description,
         "price": prop.price,
         "currency": prop.currency or "INR",
+        "property_type": prop.property_type or "Apartment",
         "address": address_detail,
         "amenities": prop.amenities.split(",") if prop.amenities else [],
+        "average_rating": float(avg_rating),
+        "reviews_count": reviews_count,
         "media": media_items,
         "host": host_info,
         "createdAt": prop.created_at,
         "updatedAt": prop.updated_at
     }
 
+import httpx
+import random
+
 @app.get("/search/suggestions")
-def get_suggestions(q: str):
-    # Seeded list of major Indian cities for MVP
-    cities = [
-        "Mumbai", "Delhi", "Bengaluru", "Bangalore", "Hyderabad", "Ahmedabad", 
-        "Chennai", "Kolkata", "Pune", "Jaipur", "Lucknow", "Kanpur"
-    ]
-    if not q:
-        return []
+async def get_suggestions(q: str):
+    return await loc_provider.autocomplete(q)
+
+@app.get("/location/pois")
+async def get_property_pois(lat: float, lng: float):
+    # Fetch POIs securely through provider
+    pois = await loc_provider.fetch_pois(lat, lng)
     
-    q_lower = q.lower()
-    matches = [c for c in cities if q_lower in c.lower()]
-    return matches[:5]
+    # Pre-calculate simple routing for each POI
+    for p in pois:
+        route = await loc_provider.get_route((lat, lng), (p["lat"], p["lng"]))
+        p["route"] = route
+        
+    return {"pois": pois}
+
 
 @app.post("/{property_id}/upload-media", response_model=schemas.PropertyMediaOut)
 def upload_media(
@@ -211,3 +294,313 @@ def get_favorites(
     favorites = db.query(models.Favorite).filter(models.Favorite.user_id == user_info["sub"]).all()
     # Return as list of property IDs for easier frontend consumption
     return [f.property_id for f in favorites]
+
+# --- REVIEWS ENDPOINTS ---
+
+@app.post("/{property_id}/reviews", response_model=schemas.ReviewOut)
+def create_review(
+    property_id: int,
+    review_data: schemas.ReviewCreate,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    new_review = models.Review(
+        property_id=property_id,
+        reviewer_id=user_info["sub"],
+        rating=review_data.rating,
+        text=review_data.text
+    )
+    db.add(new_review)
+    db.commit()
+    db.refresh(new_review)
+    
+    # Invalidate analytics cache
+    if user_info["sub"] in _analytics_cache:
+        del _analytics_cache[user_info["sub"]]
+        
+    return new_review
+
+@app.get("/{property_id}/reviews", response_model=List[schemas.ReviewOut])
+def get_property_reviews(
+    property_id: int,
+    db: Session = Depends(database.get_db)
+):
+    return db.query(models.Review).filter(
+        models.Review.property_id == property_id
+    ).order_by(models.Review.created_at.desc()).all()
+
+
+# --- ANALYTICS ENDPOINTS ---
+
+_analytics_cache = {} # Simple LRU mapping fallback
+
+@app.get("/analytics/host", response_model=schemas.HostAnalyticsOut)
+def get_host_analytics(
+    user_info: dict = Depends(require_owner),
+    db: Session = Depends(database.get_db)
+):
+    host_id = user_info["sub"]
+    
+    if host_id in _analytics_cache:
+        return _analytics_cache[host_id]
+        
+    properties = db.query(models.Property).filter(models.Property.owner_id == host_id).all()
+    if not properties:
+        res = {"total_views": 0, "total_inquiries": 0, "total_favorites": 0, "average_rating": 0.0}
+        return res
+        
+    property_ids = [p.id for p in properties]
+    
+    total_views = len(property_ids) * 142 # Mock scaler
+    total_inquiries = len(property_ids) * 5 # Mock scaler
+    
+    total_favorites = db.query(func.count(models.Favorite.id)).filter(models.Favorite.property_id.in_(property_ids)).scalar() or 0
+    avg_rating = db.query(func.avg(models.Review.rating)).filter(models.Review.property_id.in_(property_ids)).scalar() or 0.0
+    
+    res = {
+        "total_views": total_views,
+        "total_inquiries": total_inquiries,
+        "total_favorites": total_favorites,
+        "average_rating": float(avg_rating)
+    }
+    
+    _analytics_cache[host_id] = res
+    return res
+
+@app.get("/metrics", response_model=schemas.DashboardMetricsOut)
+def get_dashboard_metrics(
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    role = user_info["role"]
+    user_id = user_info["sub"]
+    logging.info(f"[PropertyService] Calculating metrics for role: {role}, user: {user_id}")
+    
+    try:
+        if role == "admin":
+            total_listings = db.query(func.count(models.Property.id)).scalar()
+            total_views = total_listings * 312 # Weighted mock scale
+            total_apps = db.query(func.count(models.VisitRequest.id)).scalar()
+            pending_rent = 1450000.0 # Aggregate mock
+        elif role == "owner":
+            properties = db.query(models.Property).filter(models.Property.owner_id == user_id).all()
+            prop_ids = [p.id for p in properties]
+            total_listings = len(prop_ids)
+            total_views = total_listings * 195
+            total_apps = db.query(func.count(models.VisitRequest.id)).filter(models.VisitRequest.property_id.in_(prop_ids)).scalar() if prop_ids else 0
+            pending_rent = 65000.0 if total_listings > 0 else 0.0
+        else: # tenant
+            total_listings = 0
+            total_views = db.query(func.count(models.Favorite.id)).filter(models.Favorite.user_id == user_id).scalar()
+            total_apps = db.query(func.count(models.VisitRequest.id)).filter(models.VisitRequest.tenant_id == user_id).scalar()
+            pending_rent = 18500.0 if total_apps > 0 else 0.0
+            
+        logging.info(f"[PropertyService] Metrics calculated successfully for {user_id}")
+        return {
+            "total_active_listings": total_listings,
+            "total_views": total_views,
+            "total_applications": total_apps,
+            "pending_rent": pending_rent,
+            "role": role
+        }
+    except Exception as e:
+        logging.error(f"[PropertyService] Failed to calculate metrics for {user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Dashboard metrics unavailable. Please refresh."
+        )
+
+
+# --- VISIT BOOKING ENDPOINTS ---
+
+@app.post("/visits", response_model=schemas.VisitRequestOut)
+def request_visit(
+    visit_data: schemas.VisitRequestCreate,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    # Verify property exists
+    prop = db.query(models.Property).filter(models.Property.id == visit_data.property_id).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+        
+    new_visit = models.VisitRequest(
+        property_id=visit_data.property_id,
+        tenant_id=user_info["sub"],
+        owner_id=prop.owner_id,
+        requested_slot=visit_data.requested_slot
+    )
+    db.add(new_visit)
+    db.commit()
+    db.refresh(new_visit)
+    return new_visit
+
+@app.get("/visits/host", response_model=List[schemas.VisitRequestOut])
+def get_host_visits(
+    user_info: dict = Depends(require_owner),
+    db: Session = Depends(database.get_db)
+):
+    return db.query(models.VisitRequest).filter(models.VisitRequest.owner_id == user_info["sub"]).all()
+
+@app.patch("/visits/{visit_id}", response_model=schemas.VisitRequestOut)
+def update_visit_status(
+    visit_id: int,
+    update_data: schemas.VisitRequestUpdate,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    visit = db.query(models.VisitRequest).filter(models.VisitRequest.id == visit_id).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit request not found")
+        
+    # Only owner or tenant (for cancellation) can update
+    if user_info["sub"] != visit.owner_id and user_info["sub"] != visit.tenant_id:
+         raise HTTPException(status_code=403, detail="Not authorized to update this visit")
+         
+    if update_data.status:
+        visit.status = update_data.status
+    if update_data.owner_response:
+        visit.owner_response = update_data.owner_response
+        
+    db.commit()
+    db.refresh(visit)
+    return visit
+
+# --- DIGITAL AGREEMENT ENDPOINTS ---
+
+from .services import PDFGenerator, SignNowProvider, DocumentVault
+from fastapi.responses import Response
+
+pdf_gen = PDFGenerator()
+esign_provider = SignNowProvider(token="mock_token")
+doc_vault = DocumentVault()
+
+@app.post("/agreements/generate", response_model=schemas.RentalAgreementOut)
+def generate_agreement(
+    agreement_data: schemas.RentalAgreementCreate,
+    user_info: dict = Depends(get_current_user_info), # Anyone can initiate draft for demo? Actually, only owner.
+    db: Session = Depends(database.get_db)
+):
+    # Verify property and ownership
+    prop = db.query(models.Property).filter(models.Property.id == agreement_data.property_id).first()
+    if not prop or prop.owner_id != user_info["sub"]:
+        raise HTTPException(status_code=403, detail="Not authorized to generate agreement for this property")
+        
+    # Create Record
+    new_agreement = models.RentalAgreement(
+        property_id=agreement_data.property_id,
+        tenant_id=agreement_data.tenant_id,
+        owner_id=user_info["sub"],
+        status="draft",
+        metadata_json=agreement_data.metadata_json
+    )
+    db.add(new_agreement)
+    db.commit()
+    db.refresh(new_agreement)
+    
+    # Generate PDF Context
+    context = {
+        "property_id": prop.id,
+        "property_title": prop.title,
+        "property_address": f"{prop.address.street}, {prop.address.city}",
+        "currency": prop.currency,
+        "price": prop.price,
+        "tenant_id": new_agreement.tenant_id,
+        "owner_id": new_agreement.owner_id,
+        "created_at": datetime.datetime.utcnow().strftime("%B %d, %Y"),
+        "signature_hash_placeholder": "[PENDING SIGNATURES]",
+        "agreement_id": new_agreement.id
+    }
+    
+    # Produce PDF payload
+    pdf_bytes = pdf_gen.generate_agreement_pdf(context)
+    
+    # Store to Vault and register checksum
+    doc_hash = doc_vault.store_document(new_agreement.id, pdf_bytes)
+    new_agreement.document_hash = doc_hash
+    db.commit()
+    db.refresh(new_agreement)
+    
+    return new_agreement
+
+@app.get("/agreements/{agreement_id}", response_model=schemas.RentalAgreementOut)
+def get_agreement(
+    agreement_id: int,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    agreement = db.query(models.RentalAgreement).filter(models.RentalAgreement.id == agreement_id).first()
+    if not agreement:
+        raise HTTPException(status_code=404, detail="Agreement not found")
+        
+    if user_info["sub"] not in [agreement.tenant_id, agreement.owner_id] and user_info["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to view this agreement")
+        
+    return agreement
+
+@app.post("/agreements/{agreement_id}/sign", response_model=schemas.RentalAgreementOut)
+async def sign_agreement(
+    agreement_id: int,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    agreement = db.query(models.RentalAgreement).filter(models.RentalAgreement.id == agreement_id).first()
+    if not agreement:
+         raise HTTPException(status_code=404, detail="Agreement not found")
+         
+    role = "owner" if user_info["sub"] == agreement.owner_id else "tenant"
+    
+    # Get signing session
+    esign_resp = await esign_provider.request_signature(agreement.id, role, f"{user_info['sub']}@rentora.test")
+    
+    # Verify signing execution
+    verify_resp = esign_provider.verify_signature(esign_resp["session_id"])
+    
+    if verify_resp["is_valid"]:
+        doc_vault.sign_document_event(agreement.id, role, user_info["sub"], verify_resp["signature_hash"])
+        
+        # State Transition
+        if agreement.status == "draft":
+            agreement.status = "pending_signatures"
+        elif agreement.status == "pending_signatures":
+            agreement.status = "signed"
+            agreement.signed_at = datetime.datetime.utcnow()
+            
+        agreement.signnow_id = esign_resp["session_id"]
+        db.commit()
+        db.refresh(agreement)
+        
+    return agreement
+
+@app.get("/agreements/{agreement_id}/download")
+def download_signed_pdf(
+    agreement_id: int,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    agreement = db.query(models.RentalAgreement).filter(models.RentalAgreement.id == agreement_id).first()
+    if not agreement:
+        raise HTTPException(status_code=404, detail="Agreement not found")
+        
+    if user_info["sub"] not in [agreement.tenant_id, agreement.owner_id] and user_info["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    try:
+        pdf_bytes = doc_vault.retrieve_document(agreement_id)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Agreement PDF not generated or archived")
+
+@app.get("/agreements/user/list", response_model=List[schemas.RentalAgreementOut])
+def list_user_agreements(
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db)
+):
+    if user_info["role"] == "admin":
+        return db.query(models.RentalAgreement).all()
+    return db.query(models.RentalAgreement).filter(
+        (models.RentalAgreement.tenant_id == user_info["sub"]) | 
+        (models.RentalAgreement.owner_id == user_info["sub"])
+    ).all()
+
+

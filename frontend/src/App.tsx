@@ -13,8 +13,22 @@ const CreateProperty = lazy(() => import('./pages/CreateProperty'));
 const Listings = lazy(() => import('./pages/Listings'));
 const Home = lazy(() => import('./pages/Home'));
 const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
+const AgreementWorkflow = lazy(() => import('./pages/AgreementWorkflow'));
+const DepositPayment = lazy(() => import('./pages/DepositPayment'));
+const AutoPaySetup = lazy(() => import('./pages/AutoPaySetup'));
+const PaymentHistory = lazy(() => import('./pages/PaymentHistory'));
+const MoveOutInitiate = lazy(() => import('./pages/MoveOutInitiate'));
+const MoveOutReview = lazy(() => import('./pages/MoveOutReview'));
+const SettlementPage = lazy(() => import('./pages/SettlementPage'));
+const ServiceRequestForm = lazy(() => import('./pages/ServiceRequestForm'));
+const OwnerAssignmentPanel = lazy(() => import('./pages/OwnerAssignmentPanel'));
+const VendorTaskView = lazy(() => import('./pages/VendorTaskView'));
+const MaintenanceHistory = lazy(() => import('./pages/MaintenanceHistory'));
+const OnboardingForm = lazy(() => import('./pages/OnboardingForm'));
+const AgreementPage = lazy(() => import('./pages/AgreementPage'));
 
 import { isFeatureEnabled } from './config/featureFlags';
+
 
 const LoadingScreen = () => {
   const theme = useTheme();
@@ -60,7 +74,21 @@ const App: React.FC = () => {
             <Route path="/create" element={<CreateProperty />} />
             <Route path="/listings/:id" element={<PropertyDetail />} />
             <Route path="/listings" element={<Listings />} />
+            <Route path="/agreements/:id" element={<AgreementWorkflow />} />
+            <Route path="/payments/deposit/:agreementId" element={<DepositPayment />} />
+            <Route path="/payments/autopay" element={<AutoPaySetup />} />
+            <Route path="/payments/history" element={<PaymentHistory />} />
+            <Route path="/moveout/initiate/:agreementId" element={<MoveOutInitiate />} />
+            <Route path="/moveout/review/:moveoutId" element={<MoveOutReview />} />
+            <Route path="/moveout/settlement/:settlementId" element={<SettlementPage />} />
+            <Route path="/maintenance/request" element={<ServiceRequestForm />} />
+            <Route path="/maintenance/assign" element={<OwnerAssignmentPanel />} />
+            <Route path="/maintenance/tasks" element={<VendorTaskView />} />
+            <Route path="/maintenance/history" element={<MaintenanceHistory />} />
+            <Route path="/onboarding/form" element={<OnboardingForm />} />
+            <Route path="/onboarding/agreements" element={<AgreementPage />} />
             <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa;">
+  <div style="max-width: 600px; margin: 0 auto; background: #fff;">
+    <div style="background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 30px; text-align: center;">
+      <h1 style="color: #fff; margin: 0; font-size: 22px;">Move-Out Notice</h1>
+      <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0;">Rentora - Your Rental Operating System</p>
+    </div>
+    <div style="padding: 30px;">
+      <p>Dear {{ owner_name }},</p>
+      <p>Your tenant <strong>{{ tenant_name }}</strong> has initiated a move-out for the following property:</p>
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 4px 0;"><strong>Property:</strong> {{ property_title }}</p>
+        <p style="margin: 4px 0;"><strong>Agreement:</strong> #{{ agreement_id }}</p>
+        <p style="margin: 4px 0;"><strong>Expected Vacate Date:</strong> {{ vacate_date }}</p>
+        <p style="margin: 4px 0;"><strong>Notice Period:</strong> 30 days</p>
+      </div>
+      <p>Please prepare for the property inspection and deposit settlement process.</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="{{ review_url }}" style="display: inline-block; background: #0A3D62; color: #fff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 700;">Review Move-Out</a>
+      </div>
+    </div>
+    <div style="padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee;">
+      <p>This is an automated email from Rentora.</p>
+    </div>
+  </div>
+</body>
+</html>

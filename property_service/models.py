@@ -11,6 +11,7 @@ class Property(Base):
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     address = Column(String, nullable=False) # Full address
+    property_type = Column(String, default="Apartment")
     city = Column(String, nullable=True)
     state = Column(String, nullable=True)
     country = Column(String, default="India")
@@ -20,6 +21,9 @@ class Property(Base):
     currency = Column(String, default="INR")
     amenities = Column(String, nullable=True) # Stored as comma separated string for MVP
     is_featured = Column(Boolean, default=False)
+    commute_score = Column(Float, nullable=True) # Normalized 1-10 string mapped score
+    status = Column(String, default="available")  # available, occupied, maintenance, unlisted
+    available_from = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     
@@ -47,3 +51,41 @@ class Favorite(Base):
     user_id = Column(String, index=True)
     property_id = Column(Integer, ForeignKey("properties.id"))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    property_id = Column(Integer, ForeignKey("properties.id"))
+    reviewer_id = Column(String, index=True) # user_identifier from profile/auth
+    rating = Column(Float, nullable=False) # 1.0 to 5.0
+    text = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class VisitRequest(Base):
+    __tablename__ = "visit_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    property_id = Column(Integer, ForeignKey("properties.id"))
+    tenant_id = Column(String, index=True)
+    owner_id = Column(String, index=True)
+    requested_slot = Column(DateTime, nullable=False)
+    status = Column(String, default="pending") # pending, confirmed, rescheduled, cancelled
+    owner_response = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class RentalAgreement(Base):
+    __tablename__ = "rental_agreements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    property_id = Column(Integer, ForeignKey("properties.id"))
+    tenant_id = Column(String, index=True)
+    owner_id = Column(String, index=True)
+    status = Column(String, default="draft") # draft, pending_signatures, signed, active, expired
+    pdf_url = Column(String, nullable=True)
+    signnow_id = Column(String, nullable=True)
+    document_hash = Column(String, nullable=True)
+    metadata_json = Column(String, nullable=True) # JSON dump of extra terms
+    signed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+

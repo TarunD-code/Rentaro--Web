@@ -14,17 +14,20 @@ import {
   InputAdornment,
   IconButton,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  FormControlLabel,
+  FormGroup
 } from '@mui/material';
 import { 
-  ArrowBack, 
+  ArrowBack,
   CheckCircle,
-  CloudUpload,
   Home
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useRef } from 'react';
+import React from 'react';
+import Upload from '../components/Upload';
 
 const CreateProperty: React.FC = () => {
   const theme = useTheme();
@@ -42,7 +45,9 @@ const CreateProperty: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [otherAmenity, setOtherAmenity] = useState('');
+  const role = localStorage.getItem('role');
 
   const steps = ['Basic Information', 'Financials & Amenities', 'Media & Confirm'];
 
@@ -53,25 +58,27 @@ const CreateProperty: React.FC = () => {
   const handleNext = () => setActiveStep((prev) => prev + 1);
   const handleBack = () => setActiveStep((prev) => prev - 1);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles(Array.from(e.target.files));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('token');
+      const finalAmenities = [...selectedAmenities];
+      if (otherAmenity) finalAmenities.push(otherAmenity);
+      
+      const payload = {
+        ...formData,
+        amenities: finalAmenities.join(', ')
+      };
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/property/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       
       let data;
@@ -168,63 +175,61 @@ const CreateProperty: React.FC = () => {
                 endAdornment: <Typography variant="caption">/mo</Typography>
               }}
             />
-            <TextField 
-              name="amenities" 
-              label="Amenities" 
-              placeholder="Pool, Gym, Parking, WiFi..."
-              helperText="Separate multiple with commas"
-              value={formData.amenities} 
-              onChange={handleChange}
-              fullWidth
-            />
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} mb={1.5}>Amenities</Typography>
+              <FormGroup row>
+                {['Pool', 'Gym', 'Parking', 'CCTV', 'Generator', 'Lift', 'Garden'].map((amt) => (
+                  <FormControlLabel 
+                    key={amt}
+                    control={
+                      <Checkbox 
+                        checked={selectedAmenities.includes(amt)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedAmenities([...selectedAmenities, amt]);
+                          else setSelectedAmenities(selectedAmenities.filter(a => a !== amt));
+                        }}
+                      />
+                    }
+                    label={amt}
+                  />
+                ))}
+              </FormGroup>
+              <TextField 
+                name="other" 
+                label="Other Amenities" 
+                placeholder="e.g. Roof deck, Cinema Room"
+                value={otherAmenity} 
+                onChange={(e) => setOtherAmenity(e.target.value)}
+                fullWidth
+                sx={{ mt: 2 }}
+              />
+            </Box>
           </Box>
         );
       case 2:
         return (
           <Box textAlign="center" py={4}>
-            <Box 
-              sx={{ 
-                p: 5, 
-                border: `2px dashed ${theme.palette.divider}`, 
-                borderRadius: 4,
-                bgcolor: alpha(theme.palette.primary.main, 0.02),
-                mb: 4,
-                position: 'relative'
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ cursor: 'pointer' }}
-            >
-              <input 
-                type="file" 
-                multiple 
-                hidden 
-                ref={fileInputRef} 
-                onChange={handleFileChange}
-                accept="image/*"
-              />
-              <CloudUpload sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-              <Typography variant="h6" fontWeight={700}>Upload Property Photos</Typography>
-              <Typography variant="body2" color="text.secondary">Add high-quality photos for 3x better conversions.</Typography>
-              <Button size="small" variant="contained" sx={{ mt: 2 }}>
-                {selectedFiles.length > 0 ? `${selectedFiles.length} files selected` : 'Select Images'}
-              </Button>
-              {selectedFiles.length > 0 && (
-                <Box mt={2} display="flex" flexWrap="wrap" gap={1} justifyContent="center">
-                  {selectedFiles.map((f, i) => (
-                    <Typography key={i} variant="caption" sx={{ p: 0.5, bgcolor: 'action.hover', borderRadius: 1 }}>
-                      {f.name}
-                    </Typography>
-                  ))}
-                </Box>
-              )}
-            </Box>
-            <Alert severity="info">Review your details before publishing. Listing will be live immediately.</Alert>
+            <Upload onFilesSelected={setSelectedFiles} />
+            <Alert severity="info" sx={{ mt: 2 }}>Review your details before publishing. Listing will be live immediately.</Alert>
           </Box>
         );
       default:
         return null;
     }
   };
+
+  if (role === 'tenant') {
+    return (
+      <Box sx={{ py: 10, px: 2 }}>
+        <Card sx={{ maxWidth: 500, mx: 'auto', p: 4, textAlign: 'center', borderRadius: 4 }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
+            Tenants are not authorized to post new listings. Please register as an Owner or Admin to access this feature.
+          </Alert>
+          <Button variant="outlined" onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+        </Card>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ py: 2 }}>

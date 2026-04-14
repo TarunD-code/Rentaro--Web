@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { palettes } from '../theme';
 import type { PaletteVariant } from '../theme';
 import { Palette as PaletteIcon, Check } from '@mui/icons-material';
+import NotificationMenu from './NotificationMenu';
 
 interface Props {
   children: React.ReactNode;
@@ -85,10 +86,31 @@ const Layout: React.FC<Props> = ({ children }) => {
     handleMenuClose();
   };
 
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate('/login');
+    handleMenuClose();
+  };
+
   const isAuthPage = ['/login', '/register', '/verify'].includes(location.pathname);
 
-  // Simplified Bottom Nav Action for Mobile
-  const bottomNavValue = ['/dashboard', '/listings', '/create', '/profile'].indexOf(location.pathname);
+  const [role, setRole] = useState<string | null>(localStorage.getItem('role'));
+
+  React.useEffect(() => {
+    setRole(localStorage.getItem('role'));
+  }, [location.pathname]);
+
+  // Define nav items based on role
+  const navItems = [
+    { label: t('dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
+    { label: t('browse_listings'), icon: <ListingsIcon />, path: '/listings' },
+    ...((role === 'owner' || role === 'admin') ? 
+      [{ label: t('add_property'), icon: <AddIcon />, path: '/create' }] : []),
+    { label: t('profile'), icon: <AccountCircle />, path: '/profile' }
+  ];
+
+  const currentNavValue = navItems.findIndex(item => location.pathname.startsWith(item.path));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -129,13 +151,15 @@ const Layout: React.FC<Props> = ({ children }) => {
                   <Box sx={{ display: 'flex', gap: 2 }}>
                     <Button color="inherit" onClick={() => navigate('/dashboard')}>{t('dashboard')}</Button>
                     <Button color="inherit" onClick={() => navigate('/listings')}>{t('browse_listings')}</Button>
-                    <Button 
-                      variant="contained" 
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/create')}
-                    >
-                      {t('add_property')}
-                    </Button>
+                    {(role === 'owner' || role === 'admin') && (
+                      <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon />}
+                        onClick={() => navigate('/create')}
+                      >
+                        {t('add_property')}
+                      </Button>
+                    )}
                   </Box>
                 )}
 
@@ -171,7 +195,7 @@ const Layout: React.FC<Props> = ({ children }) => {
                     </Tooltip>
                   )}
 
-                  {/* Theme toggle removed as we use palette variants now */}
+                  <NotificationMenu />
 
                   <Tooltip title="Change language">
                     <IconButton onClick={handleLangMenuOpen} color="inherit">
@@ -204,7 +228,13 @@ const Layout: React.FC<Props> = ({ children }) => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={() => changeLanguage('en')}>English</MenuItem>
-        <MenuItem onClick={() => changeLanguage('hi')}>हिन्दी</MenuItem>
+        <MenuItem onClick={() => changeLanguage('hi')}>हिन्दी (Hindi)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('mr')}>मराठी (Marathi)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('ta')}>தமிழ் (Tamil)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('te')}>తెలుగు (Telugu)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('kn')}>ಕನ್ನಡ (Kannada)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('ml')}>മലയാളം (Malayalam)</MenuItem>
+        <MenuItem onClick={() => changeLanguage('bn')}>বাংলা (Bengali)</MenuItem>
       </Menu>
 
       {/* Palette Menu for Mobile */}
@@ -234,7 +264,6 @@ const Layout: React.FC<Props> = ({ children }) => {
         ))}
       </Menu>
 
-      {/* User Proflie Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -242,8 +271,10 @@ const Layout: React.FC<Props> = ({ children }) => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>{t('profile')}</MenuItem>
-        <MenuItem onClick={() => { handleMenuClose(); /* Add logout logic here */ }} sx={{ color: 'error.main' }}>
+        <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+          <AccountCircle sx={{ mr: 1, fontSize: 20 }} /> {t('profile')}
+        </MenuItem>
+        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
           <ExitToApp sx={{ mr: 1, fontSize: 20 }} /> {t('logout')}
         </MenuItem>
       </Menu>
@@ -271,16 +302,14 @@ const Layout: React.FC<Props> = ({ children }) => {
         >
           <BottomNavigation
             showLabels
-            value={bottomNavValue >= 0 ? bottomNavValue : 0}
+            value={navItems.findIndex(item => location.pathname.startsWith(item.path))}
             onChange={(_, newValue) => {
-              const paths = ['/dashboard', '/listings', '/create', '/profile'];
-              navigate(paths[newValue]);
+              navigate(navItems[newValue].path);
             }}
           >
-            <BottomNavigationAction label={t('dashboard')} icon={<DashboardIcon />} />
-            <BottomNavigationAction label={t('browse_listings')} icon={<ListingsIcon />} />
-            <BottomNavigationAction label={t('add_property')} icon={<AddIcon />} />
-            <BottomNavigationAction label={t('profile')} icon={<AccountCircle />} />
+            {navItems.map((item, idx) => (
+              <BottomNavigationAction key={idx} label={item.label} icon={item.icon} />
+            ))}
           </BottomNavigation>
         </Paper>
       )}

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Auto-Pay Failed — Rentora</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .header { background: linear-gradient(135deg, #e74c3c, #c0392b); color: #fff; padding: 32px 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .body { padding: 32px 24px; }
+        .warning-box { background: #fff5f5; border-left: 4px solid #e74c3c; padding: 16px; border-radius: 4px; margin: 20px 0; }
+        .cta { display: block; background: #e74c3c; color: #fff; text-align: center; padding: 14px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0; }
+        .footer { background: #f8f9fa; padding: 20px 24px; text-align: center; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠ Auto-Pay Failed</h1>
+        </div>
+        <div class="body">
+            <p>Hi <strong>{{tenant_name}}</strong>,</p>
+            <p>Your auto-pay charge of <strong>₹{{amount}}</strong> for "<strong>{{property_title}}</strong>" could not be processed.</p>
+            <div class="warning-box">
+                <strong>Reason:</strong> {{reason}}
+            </div>
+            <p>Please pay manually to avoid late fees.</p>
+            <a href="https://rentora.com/dashboard" class="cta">Pay Now →</a>
+            <p style="font-size: 13px; color: #888;">If this keeps happening, please update your payment method or contact support.</p>
+        </div>
+        <div class="footer">
+            <p>© 2026 Rentora. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

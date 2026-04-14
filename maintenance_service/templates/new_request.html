@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;background:#f8f9fa;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:linear-gradient(135deg,#e67e22,#d35400);padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:22px;">New Service Request</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;">Rentora Maintenance</p>
+    </div>
+    <div style="padding:30px;">
+      <p>Dear {{ owner_name }},</p>
+      <p>A new maintenance request has been raised by tenant <strong>{{ tenant_name }}</strong>.</p>
+      <div style="background:#fef9f0;border:2px solid #e67e22;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:4px 0;"><strong>Category:</strong> {{ category }}</p>
+        <p style="margin:4px 0;"><strong>Title:</strong> {{ title }}</p>
+        <p style="margin:4px 0;"><strong>Priority:</strong> <span style="color:{{ priority_color }};">{{ priority }}</span></p>
+        <p style="margin:4px 0;"><strong>Property:</strong> #{{ property_id }}</p>
+      </div>
+      <p>{{ description }}</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{{ dashboard_url }}" style="display:inline-block;background:#0A3D62;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:700;">Assign Vendor</a>
+      </div>
+    </div>
+    <div style="padding:20px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee;">Automated email from Rentora.</div>
+  </div>
+</body>
+</html>

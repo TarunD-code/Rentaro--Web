@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:0;background:#f8f9fa;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:linear-gradient(135deg,#8e44ad,#9b59b6);padding:30px;text-align:center;">
+      <h1 style="color:#fff;margin:0;font-size:22px;">Agreement Ready</h1>
+      <p style="color:rgba(255,255,255,0.8);margin:5px 0 0;">Rentora Digital Agreement</p>
+    </div>
+    <div style="padding:30px;">
+      <p>Dear {{ recipient_name }},</p>
+      <p>Your rental agreement <strong>AGR-{{ agreement_id }}</strong> has been generated and is ready for signing.</p>
+      <div style="background:#f8f4ff;border:2px solid #8e44ad;border-radius:8px;padding:16px;margin:20px 0;">
+        <p style="margin:4px 0;"><strong>Property:</strong> #{{ property_id }}</p>
+        <p style="margin:4px 0;"><strong>Monthly Rent:</strong> Rs.{{ monthly_rent }}</p>
+        <p style="margin:4px 0;"><strong>Deposit:</strong> Rs.{{ security_deposit }}</p>
+        <p style="margin:4px 0;"><strong>Duration:</strong> {{ start_date }} to {{ end_date }}</p>
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="{{ sign_url }}" style="display:inline-block;background:#0A3D62;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:700;">Review & Sign</a>
+      </div>
+    </div>
+    <div style="padding:20px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee;">Automated email from Rentora.</div>
+  </div>
+</body>
+</html>
