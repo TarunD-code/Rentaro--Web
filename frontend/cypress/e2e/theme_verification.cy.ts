@@ -36,7 +36,7 @@ describe('Rentora Theme System Verification', () => {
         cy.get('body').should('have.css', 'background-color', bgColors[palette]);
 
         // Check for console errors
-        cy.window().then((win) => {
+        cy.window().then(() => {
           // Note: This requires a bit more setup if we want to catch errors after visit
           // but for now we look at the console logs if possible or assume no crash
         });
