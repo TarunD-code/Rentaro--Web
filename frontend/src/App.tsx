@@ -26,6 +26,10 @@ const VendorTaskView = lazy(() => import('./pages/VendorTaskView'));
 const MaintenanceHistory = lazy(() => import('./pages/MaintenanceHistory'));
 const OnboardingForm = lazy(() => import('./pages/OnboardingForm'));
 const AgreementPage = lazy(() => import('./pages/AgreementPage'));
+const OwnerPayoutDashboard = lazy(() => import('./pages/OwnerPayoutDashboard'));
+const StatementsPage = lazy(() => import('./pages/StatementsPage'));
+const ReconciliationAdmin = lazy(() => import('./pages/ReconciliationAdmin'));
+const AdminAnalyticsDashboard = lazy(() => import('./pages/AdminAnalyticsDashboard'));
 
 import { isFeatureEnabled } from './config/featureFlags';
 
@@ -87,6 +91,10 @@ const App: React.FC = () => {
             <Route path="/maintenance/history" element={<MaintenanceHistory />} />
             <Route path="/onboarding/form" element={<OnboardingForm />} />
             <Route path="/onboarding/agreements" element={<AgreementPage />} />
+            <Route path="/payouts" element={<OwnerPayoutDashboard />} />
+            <Route path="/statements" element={<StatementsPage />} />
+            <Route path="/reconciliation" element={<ReconciliationAdmin />} />
+            <Route path="/admin/analytics" element={<AdminAnalyticsDashboard />} />
             <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

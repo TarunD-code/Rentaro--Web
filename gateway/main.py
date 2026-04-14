@@ -28,6 +28,7 @@ PROPERTY_SERVICE_URL = "http://127.0.0.1:8003"
 PAYMENT_SERVICE_URL = "http://127.0.0.1:8004"
 MAINTENANCE_SERVICE_URL = "http://127.0.0.1:8005"
 ONBOARDING_SERVICE_URL = "http://127.0.0.1:8006"
+ANALYTICS_SERVICE_URL = "http://127.0.0.1:8007"
 
 # Reusable async HTTP client (avoids connection leak)
 http_client = httpx.AsyncClient(timeout=10.0)
@@ -126,6 +127,8 @@ async def gateway_router(request: Request, path: str):
         return await reverse_proxy(request, MAINTENANCE_SERVICE_URL, prefix_to_strip="maintenance")
     elif path.startswith("onboarding"):
         return await reverse_proxy(request, ONBOARDING_SERVICE_URL, prefix_to_strip="onboarding")
+    elif path.startswith("analytics"):
+        return await reverse_proxy(request, ANALYTICS_SERVICE_URL, prefix_to_strip="analytics")
     
     return StreamingResponse(
         iter([b'{"detail": "Route not found"}']),

@@ -11,7 +11,7 @@ import {
   Divider
 } from '@mui/material';
 import { Send, Close, Check, DoneAll } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+
 
 interface Message {
   id: number;
