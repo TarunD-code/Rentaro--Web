@@ -7,7 +7,7 @@ export const featureFlags = {
   epic5_sprint10_payments_v1: true,
   epic6_sprint11_moveout_v1: true,
   epic7_sprint12_maintenance_v1: true,
-  epic7_sprint13_onboarding_v1: true,
+  epic7_sprint13_onboarding_v1: false,
 };
 
 export const isFeatureEnabled = (feature: keyof typeof featureFlags) => {

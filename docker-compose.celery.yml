@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    command: celery -A onboarding_service.tasks worker --loglevel=info
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - DOCUSIGN_INTEGRATION_KEY=${DOCUSIGN_INTEGRATION_KEY}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
