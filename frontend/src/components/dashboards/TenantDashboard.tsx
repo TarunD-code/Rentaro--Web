@@ -1,4 +1,4 @@
-import { Box, Typography, Grid, Card, CardContent, Avatar, useTheme, alpha, Paper } from '@mui/material';
+import { Box, Typography, Grid, Card, CardContent, Avatar, useTheme, alpha, Paper, Button } from '@mui/material';
 import { House, ReceiptLong, CheckCircle, Search, Receipt, ExitToApp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -135,7 +135,7 @@ const TenantDashboard: React.FC<TenantDashboardProps> = ({ agreements, metrics }
                       size="small"
                       color="error"
                       startIcon={<ExitToApp sx={{ fontSize: 14 }} />}
-                      onClick={(e) => { e.stopPropagation(); navigate(`/moveout/initiate/${ag.id}`); }}
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); navigate(`/moveout/initiate/${ag.id}`); }}
                       sx={{ mt: 1, textTransform: 'none', fontSize: '0.75rem', fontWeight: 600 }}
                     >
                       Initiate Move-Out

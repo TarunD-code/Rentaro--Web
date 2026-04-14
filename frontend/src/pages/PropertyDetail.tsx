@@ -15,25 +15,22 @@ import {
 } from '@mui/material';
 import { 
   LocationOn, 
-  Verified, 
   Star, 
   Share, 
   FavoriteBorder, 
-  EmojiObjects,
   ChevronLeft,
   DirectionsRun,
   Commute
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPropertyById } from '../api/properties';
-import type { PropertyDetail as PropertyType } from '../api/properties';
 import { Helmet } from 'react-helmet-async';
 import TrustBadge from '../components/TrustBadge';
 import ChatBox from '../components/ChatBox';
 import { Rating, TextField } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs, { Dayjs } from 'dayjs';
+import { Dayjs } from 'dayjs';
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -215,11 +212,13 @@ export default function PropertyDetail() {
       getPropertyById(id).then(data => {
         setProperty(data);
         setLoading(false);
-        // Fetch Location POIs
-        fetch(`${import.meta.env.VITE_API_URL}/property/location/pois?lat=${data.address.geo.lat}&lng=${data.address.geo.lng}`)
-          .then(res => res.json())
-          .then(setCommuteData)
-          .catch(err => console.error("Commute Error", err));
+        // Fetch Location POIs - with proper null check
+        if (data?.address?.geo?.lat && data?.address?.geo?.lng) {
+          fetch(`${import.meta.env.VITE_API_URL}/property/location/pois?lat=${data.address.geo.lat}&lng=${data.address.geo.lng}`)
+            .then(res => res.json())
+            .then(setCommuteData)
+            .catch(err => console.error("Commute Error", err));
+        }
       });
       fetchReviews(id);
       fetchProfile();
