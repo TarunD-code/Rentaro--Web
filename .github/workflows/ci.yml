@@ -6,7 +6,12 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
+  # TODO: follow-up PR to bump actions/checkout, actions/setup-node, actions/setup-python
+  # to Node24-compatible releases and remove FORCE_JAVASCRIPT_ACTIONS_TO_NODE24
   build:
     runs-on: ubuntu-latest
 
@@ -16,10 +21,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 24
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     - name: Install dependencies
@@ -31,3 +36,53 @@ jobs:
     - name: Lint
       run: npm run lint
       working-directory: frontend
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Debug working directory and files
+      run: |
+        echo "PWD: $(pwd)"
+        ls -la
+        ls -la tests || echo "tests folder not present"
+        ls -la requirements.txt || true
+        ls -la backend/requirements.txt || true
+
+    - name: Install backend dependencies safe
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then
+          echo "Installing root requirements.txt"
+          pip install -r requirements.txt
+        elif [ -f backend/requirements.txt ]; then
+          echo "Installing backend/requirements.txt"
+          pip install -r backend/requirements.txt
+        else
+          echo "No requirements.txt found; skipping pip install"
+        fi
+
+    - name: Run backend tests safe
+      run: |
+        if [ -d tests ]; then
+          echo "Running backend tests in ./tests"
+          if command -v pytest >/dev/null 2>&1; then
+            pytest tests/test_onboarding_service.py -v || { echo "pytest failed"; exit 1; }
+          else
+            echo "pytest not installed; skipping backend tests"
+          fi
+        else
+          echo "No tests directory found; skipping backend tests"
+        fi
+    - name: Cypress E2E Tests
+      run: |
+        if [ -d frontend/cypress/e2e ]; then
+          npm run dev &
+          npx wait-on http://localhost:5173
+          npx cypress run --spec cypress/e2e/sprint13_onboarding.cy.ts
+        else
+          echo "Cypress tests folder not found; skipping Cypress tests"
+        fi
+      working-directory: frontend
+      env:
+        CYPRESS_baseUrl: 'http://localhost:5173'

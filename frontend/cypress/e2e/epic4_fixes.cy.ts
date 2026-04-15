@@ -1,6 +1,6 @@
 describe('Rentora Epic 4 Stabilization & Fixes', () => {
   const adminEmail = 'admin@rentora.com';
-  const tenantEmail = 'tenant@rentora.com'; // Assumes pre-existing or created in test
+  const _tenantEmail = 'tenant@rentora.com'; // TODO: use or remove
   const password = 'admin123';
 
   beforeEach(() => {
@@ -76,8 +76,8 @@ describe('Rentora Epic 4 Stabilization & Fixes', () => {
     
     cy.url().should('include', '/login');
     cy.window().then((win) => {
-      expect(win.localStorage.getItem('token')).to.be.null;
-      expect(win.localStorage.getItem('test-key')).to.be.null;
+      expect(win.localStorage.getItem('token')).to.equal(null);
+      expect(win.localStorage.getItem('test-key')).to.equal(null);
     });
   });
 

@@ -53,7 +53,7 @@ describe('Sprint 13: Onboarding & Agreements', () => {
       cy.wait(3000);
       cy.get('body').then(($body) => {
         const text = $body.text();
-        expect(text.includes('AGR-') || text.includes('No agreements')).to.be.true;
+        expect(text.includes('AGR-') || text.includes('No agreements')).to.equal(true);
       });
     });
   });

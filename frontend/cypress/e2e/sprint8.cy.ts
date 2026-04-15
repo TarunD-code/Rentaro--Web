@@ -18,7 +18,7 @@ describe('Rentora Sprint 8 Features', () => {
     
     // Should clear storage and redirect
     cy.window().then((win) => {
-      expect(win.localStorage.getItem('token')).to.be.null;
+      expect(win.localStorage.getItem('token')).to.equal(null);
     });
     cy.url().should('include', '/login');
   });

@@ -46,7 +46,7 @@ describe('Sprint 12: Maintenance Service', () => {
       cy.wait(3000);
       cy.get('body').then(($body) => {
         const text = $body.text();
-        expect(text.includes('Assign') || text.includes('No pending')).to.be.true;
+        expect(text.includes('Assign') || text.includes('No pending')).to.equal(true);
       });
     });
   });

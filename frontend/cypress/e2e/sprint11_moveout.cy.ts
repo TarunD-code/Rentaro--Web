@@ -42,7 +42,7 @@ describe('Sprint 11: Move-Out Workflow', () => {
       cy.get('body').then(($body) => {
         const text = $body.text();
         // Either shows initiation form or status tracker
-        expect(text.includes('Initiate Move-Out') || text.includes('Move-Out Status')).to.be.true;
+        expect(text.includes('Initiate Move-Out') || text.includes('Move-Out Status')).to.equal(true);
       });
     });
 
@@ -103,7 +103,7 @@ describe('Sprint 11: Move-Out Workflow', () => {
       cy.wait(3000);
       cy.get('body').then(($body) => {
         const text = $body.text();
-        expect(text.includes('Finalize Settlement') || text.includes('Download Settlement PDF')).to.be.true;
+        expect(text.includes('Finalize Settlement') || text.includes('Download Settlement PDF')).to.equal(true);
       });
     });
   });
