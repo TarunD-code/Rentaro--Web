@@ -1,0 +1,6 @@
+fastapi
+sqlalchemy
+PyJWT
+pytest
+httpx
+python-multipart

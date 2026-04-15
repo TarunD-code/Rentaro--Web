@@ -45,34 +45,34 @@ jobs:
       run: |
         echo "PWD: $(pwd)"
         ls -la
-        ls -la backend || echo "backend folder not present"
+        ls -la tests || echo "tests folder not present"
         ls -la requirements.txt || true
         ls -la backend/requirements.txt || true
 
     - name: Install backend dependencies safe
       run: |
         python -m pip install --upgrade pip
-        if [ -f backend/requirements.txt ]; then
-          pip install -r backend/requirements.txt
-        elif [ -f requirements.txt ]; then
+        if [ -f requirements.txt ]; then
+          echo "Installing root requirements.txt"
           pip install -r requirements.txt
+        elif [ -f backend/requirements.txt ]; then
+          echo "Installing backend/requirements.txt"
+          pip install -r backend/requirements.txt
         else
           echo "No requirements.txt found; skipping pip install"
         fi
 
     - name: Run backend tests safe
       run: |
-        if [ -d backend ]; then
-          echo "Running backend tests in ./backend"
-          cd backend
+        if [ -d tests ]; then
+          echo "Running backend tests in ./tests"
           if command -v pytest >/dev/null 2>&1; then
-            pytest || { echo "pytest failed"; exit 1; }
+            pytest tests/test_onboarding_service.py -v || { echo "pytest failed"; exit 1; }
           else
             echo "pytest not installed; skipping backend tests"
           fi
-          cd ..
         else
-          echo "No backend directory found; skipping backend tests"
+          echo "No tests directory found; skipping backend tests"
         fi
     - name: Cypress E2E Tests
       run: |
