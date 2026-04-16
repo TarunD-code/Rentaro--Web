@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, Alert, CircularProgress,
-  TextField, Chip, Divider, Avatar, useTheme, alpha, Paper, Dialog,
+  TextField, Chip, Divider, Avatar, useTheme, alpha, Dialog,
   DialogTitle, DialogContent, DialogActions, Stepper, Step, StepLabel
 } from '@mui/material';
-import { ExitToApp, Warning, CalendarMonth, CheckCircle } from '@mui/icons-material';
+import { ExitToApp, Warning, CalendarMonth } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const STEPS = ['Initiate', 'Notice Period', 'Owner Review', 'Settlement', 'Complete'];

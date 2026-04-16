@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, CircularProgress,
-  TextField, Chip, Divider, Avatar, useTheme, alpha, Dialog,
-  DialogTitle, DialogContent, DialogActions, MenuItem
+  TextField, Chip, useTheme, alpha, Dialog,
+  DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { PersonAdd, CheckCircle, Build } from '@mui/icons-material';
+import { PersonAdd, Build } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -18,7 +17,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const OwnerAssignmentPanel: React.FC = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
 
   const [loading, setLoading] = useState(true);

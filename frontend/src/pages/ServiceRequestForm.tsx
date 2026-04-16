@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Card, CardContent, Button, Alert, CircularProgress,
-  TextField, MenuItem, Chip, Avatar, useTheme, alpha, Dialog,
-  DialogTitle, DialogContent, DialogActions
+  Box, Typography, Button, Alert, CircularProgress,
+  TextField, MenuItem, Chip, useTheme, alpha
 } from '@mui/material';
 import {
   Build, Plumbing, ElectricalServices, CleaningServices,

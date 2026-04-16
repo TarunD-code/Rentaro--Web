@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, Chip, CircularProgress,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
-  useTheme, alpha, Divider
+  useTheme, alpha
 } from '@mui/material';
-import { Description, Send, CheckCircle, Schedule } from '@mui/icons-material';
+import { Description, Send, CheckCircle } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -15,7 +14,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const AgreementPage: React.FC = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [agreements, setAgreements] = useState<any[]>([]);

@@ -25,8 +25,7 @@ import {
   Search, 
   GridView, 
   Map as MapIcon, 
-  Tune,
-  Train
+  Tune
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
@@ -509,7 +508,7 @@ const Listings: React.FC = () => {
             
             {/* Property Markers */}
             <MarkerClusterGroup>
-              {filteredProperties.map((property, idx) => {
+              {filteredProperties.map((property) => {
                 const lat = property.address_geo_lat || (mapCenter[0] + (Math.random() - 0.5) * 0.05);
                 const lng = property.address_geo_lng || (mapCenter[1] + (Math.random() - 0.5) * 0.05);
                 return (

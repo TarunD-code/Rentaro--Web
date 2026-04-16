@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, Alert, CircularProgress,
-  TextField, MenuItem, Chip, Divider, Avatar, useTheme, alpha,
+  TextField, MenuItem, useTheme, alpha,
   IconButton, LinearProgress
 } from '@mui/material';
-import { AddCircle, Delete, CameraAlt, CheckCircle, Send } from '@mui/icons-material';
+import { AddCircle, Delete, CheckCircle, Send } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 interface DeductionItem {
@@ -29,7 +29,7 @@ const MoveOutReview: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [moveout, setMoveout] = useState<any>(null);
+  const [_moveout, setMoveout] = useState<any>(null);
   const [deductions, setDeductions] = useState<DeductionItem[]>([]);
   const [pendingRent, setPendingRent] = useState(0);
   const [cleaningCharge, setCleaningCharge] = useState(0);

@@ -27,9 +27,6 @@ const StatementsPage: React.FC = () => {
   const handleDownload = async () => {
     setLoading(true);
     try {
-        const token = localStorage.getItem('token');
-        const ownerId = localStorage.getItem('userId');
-        
         // Simulating the /owners/me/statements GET request
         // In real backend, returning the generated WeasyPrint statement PDF blob
         
@@ -59,7 +56,7 @@ const StatementsPage: React.FC = () => {
         </Typography>
         
         <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={8}>
+            <Grid size={{ xs: 12, sm: 8 }}>
                 <FormControl fullWidth size="medium">
                     <InputLabel>Month</InputLabel>
                     <Select
@@ -73,7 +70,7 @@ const StatementsPage: React.FC = () => {
                     </Select>
                 </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
                 <Button 
                     variant="contained" 
                     fullWidth 

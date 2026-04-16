@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Card, CardContent, Button, Chip, CircularProgress,
+  Box, Typography, Button, Chip, CircularProgress,
   TextField, MenuItem, useTheme, alpha, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper
 } from '@mui/material';
-import { Download, FilterList, Build } from '@mui/icons-material';
+import { Download } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const STATUS_COLORS: Record<string, string> = {
