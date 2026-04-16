@@ -29,6 +29,7 @@ const AgreementPage = lazy(() => import('./pages/AgreementPage'));
 const OwnerPayoutDashboard = lazy(() => import('./pages/OwnerPayoutDashboard'));
 const StatementsPage = lazy(() => import('./pages/StatementsPage'));
 const ReconciliationAdmin = lazy(() => import('./pages/ReconciliationAdmin'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
 
 import { isFeatureEnabled } from './config/featureFlags';
 
@@ -93,6 +94,8 @@ const App: React.FC = () => {
             <Route path="/payouts" element={<OwnerPayoutDashboard />} />
             <Route path="/statements" element={<StatementsPage />} />
             <Route path="/reconciliation" element={<ReconciliationAdmin />} />
+            <Route path="/chat/:receiverId" element={<ChatPage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

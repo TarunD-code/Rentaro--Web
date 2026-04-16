@@ -34,6 +34,12 @@ jobs:
     - name: Lint
       run: npm run lint
       working-directory: frontend
+    - name: Install Communication Service deps
+      run: npm install
+      working-directory: communication_service
+    - name: Build Communication Service
+      run: npm run build
+      working-directory: communication_service
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
