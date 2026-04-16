@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Grid, Card, CardContent, Button, 
-  CircularProgress, Alert, Paper, Divider,
+  CircularProgress, Alert, Paper,
   Table, TableBody, TableCell, TableHead, TableRow, Chip
 } from '@mui/material';
-import { AccountBalanceWallet, RequestQuote, FileDownload, Refresh } from '@mui/icons-material';
+import { RequestQuote, FileDownload } from '@mui/icons-material';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,12 +29,10 @@ const OwnerPayoutDashboard: React.FC = () => {
   const [history, setHistory] = useState<PayoutRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [withdrawAmount, setWithdrawAmount] = useState(0); // Assuming full withdraw
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       // Simulated endpoint since we didn't add /owners/me/balance explicitly in the prompt API list but it is implied by OwnerBalance dashboard
       // However, the prompt says "Frontend Owner Payout Dashboard: current balance, pending payouts, initiate payout, view history."
       // Since we didn't build a separate GET /balance, we can infer from GET /payouts/history or mock for now
@@ -98,7 +96,7 @@ const OwnerPayoutDashboard: React.FC = () => {
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #0A3D62 0%, #175482 100%)', color: 'white' }}>
             <CardContent>
               <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>Available Balance</Typography>
@@ -123,7 +121,7 @@ const OwnerPayoutDashboard: React.FC = () => {
           </Card>
         </Grid>
         
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card elevation={3} sx={{ height: '100%', borderRadius: 3, display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <Typography variant="h6" display="flex" alignItems="center" gap={1} mb={2}>

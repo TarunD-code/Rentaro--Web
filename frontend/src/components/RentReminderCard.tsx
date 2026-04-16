@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, Chip, Avatar,
-  useTheme, alpha, Divider, Switch, Tooltip
+  useTheme, alpha, Divider, Tooltip
 } from '@mui/material';
 import { Payment, AutoMode, CalendarMonth, ArrowForward } from '@mui/icons-material';
 

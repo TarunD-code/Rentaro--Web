@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, TextField, Alert, CircularProgress,
-  Stepper, Step, StepLabel, Card, CardContent, Chip, useTheme, alpha, MenuItem
+  Stepper, Step, StepLabel, Card, CardContent, useTheme, alpha, MenuItem
 } from '@mui/material';
 import { PersonAdd, Upload, CheckCircle, Send } from '@mui/icons-material';
 import { motion } from 'framer-motion';

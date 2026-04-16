@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, CircularProgress,
-  Chip, Divider, Avatar, useTheme, alpha, Paper, Stepper, Step, StepLabel
+  Chip, Divider, useTheme, alpha, Paper
 } from '@mui/material';
-import { Receipt, Download, CheckCircle, ArrowBack } from '@mui/icons-material';
+import { Download, CheckCircle, ArrowBack } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const SettlementPage: React.FC = () => {

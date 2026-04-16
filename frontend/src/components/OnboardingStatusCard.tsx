@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Card, CardContent, Chip, Avatar, Button, useTheme, alpha } from '@mui/material';
-import { Assignment, CheckCircle, Schedule } from '@mui/icons-material';
+import { Assignment, CheckCircle } from '@mui/icons-material';
 
 interface OnboardingStatusCardProps { role?: string; }
 

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Box, Typography, Card, CardContent, Button, Chip, CircularProgress,
   useTheme, alpha, Stepper, Step, StepLabel, Divider, TextField, Dialog,
   DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { CheckCircle, PlayArrow, Build } from '@mui/icons-material';
+import { CheckCircle, PlayArrow } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 const TASK_STEPS = ['Assigned', 'Accepted', 'In Progress', 'Completed'];
 
 const VendorTaskView: React.FC = () => {
-  const navigate = useNavigate();
   const theme = useTheme();
 
   const [loading, setLoading] = useState(true);
