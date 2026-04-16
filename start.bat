@@ -22,6 +22,9 @@ start "Maintenance Service" cmd /k ".\venv\Scripts\activate && uvicorn maintenan
 echo Starting Onboarding Service on port 8006...
 start "Onboarding Service" cmd /k ".\venv\Scripts\activate && uvicorn onboarding_service.main:app --host 127.0.0.1 --port 8006 --reload"
 
+echo Starting Communication Service on port 8007...
+start "Communication Service" cmd /k "cd communication_service && npm run start"
+
 echo Starting Vite Frontend...
 start "Frontend" cmd /k "cd frontend && npm run dev"
 

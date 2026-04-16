@@ -24,5 +24,3 @@
 - Monthly earnings
 - Active vs inactive agreements
 
-## Feature Flag
-- `fix_profile_dashboard_gridmap_v1` — Stabilization fixes for dashboard and map interactions

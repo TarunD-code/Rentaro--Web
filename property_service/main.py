@@ -127,19 +127,24 @@ def list_properties(
                 "size": m.size
             })
             
-        results.append({
-            "id": prop.id,
-            "owner_id": prop.owner_id,
-            "title": prop.title,
-            "description": prop.description,
-            "address": prop.address,
-            "property_type": prop.property_type,
-            "price": prop.price,
-            "amenities": prop.amenities,
-            "commute_score": prop.commute_score,
-            "created_at": prop.created_at,
-            "media": media_items
-        })
+        # Manually map to handle MediaItem field mismatches (url vs raw_url, etc.)
+        try:
+            results.append({
+                "id": prop.id,
+                "owner_id": prop.owner_id,
+                "title": prop.title,
+                "description": prop.description,
+                "address": prop.address,
+                "property_type": prop.property_type,
+                "price": prop.price,
+                "amenities": prop.amenities,
+                "commute_score": prop.commute_score,
+                "created_at": prop.created_at,
+                "media": media_items
+            })
+        except Exception as e:
+            logging.error(f"[PropertyService] Failed to map property {prop.id}: {str(e)}")
+            continue
         
     return results
 
@@ -397,11 +402,11 @@ def get_dashboard_metrics(
             
         logging.info(f"[PropertyService] Metrics calculated successfully for {user_id}")
         return {
-            "total_active_listings": total_listings,
-            "total_views": total_views,
-            "total_applications": total_apps,
-            "pending_rent": pending_rent,
-            "role": role
+            "total_active_listings": int(total_listings or 0),
+            "total_views": int(total_views or 0),
+            "total_applications": int(total_apps or 0),
+            "pending_rent": float(pending_rent or 0.0),
+            "role": str(role or "tenant")
         }
     except Exception as e:
         logging.error(f"[PropertyService] Failed to calculate metrics for {user_id}: {str(e)}", exc_info=True)

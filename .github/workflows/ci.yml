@@ -2,9 +2,9 @@ name: Rentora Frontend CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/sprint16 ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/sprint16 ]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"

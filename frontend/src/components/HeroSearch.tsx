@@ -51,7 +51,7 @@ const HeroSearch: React.FC = () => {
         width: '100%', 
         maxWidth: 700, 
         position: 'relative',
-        zIndex: 10 
+        zIndex: 1000 
       }}
     >
       <Paper 

@@ -509,12 +509,39 @@ const Listings: React.FC = () => {
             {/* Property Markers */}
             <MarkerClusterGroup>
               {filteredProperties.map((property) => {
-                const lat = property.address_geo_lat || (mapCenter[0] + (Math.random() - 0.5) * 0.05);
-                const lng = property.address_geo_lng || (mapCenter[1] + (Math.random() - 0.5) * 0.05);
+                const lat = property.address?.geo?.lat || property.address_geo_lat || (mapCenter[0] + (Math.random() - 0.5) * 0.05);
+                const lng = property.address?.geo?.lng || property.address_geo_lng || (mapCenter[1] + (Math.random() - 0.5) * 0.05);
+                
                 return (
-                  <Marker key={property.id} position={[lat, lng]}>
-                    <Popup closeButton={false} className="custom-property-popup">
-                      <MapPopupCard property={property} />
+                  <Marker 
+                    key={property.id} 
+                    position={[lat, lng]}
+                    eventHandlers={{
+                      mouseover: (e) => {
+                        e.target.openPopup();
+                      },
+                      click: () => {
+                        navigate(`/property/${property.id}`);
+                      }
+                    }}
+                  >
+                    <Popup closeButton={false} className="custom-property-popup" autoPan={false}>
+                      <Box sx={{ width: 220, p: 0.5 }}>
+                        <MapPopupCard property={property} />
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            display: 'block', 
+                            textAlign: 'center', 
+                            mt: 1, 
+                            color: 'primary.main', 
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Click to view details
+                        </Typography>
+                      </Box>
                     </Popup>
                   </Marker>
                 );

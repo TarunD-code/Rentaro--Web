@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,9 +69,11 @@ async def reverse_proxy(request: Request, upstream_url: str, prefix_to_strip: st
         resp_headers.pop("transfer-encoding", None)
         resp_headers.pop("content-length", None)
 
-        resp_headers["Access-Control-Allow-Origin"] = "*"
+        origin = request.headers.get("origin", "*")
+        resp_headers["Access-Control-Allow-Origin"] = origin
         resp_headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        resp_headers["Access-Control-Allow-Headers"] = "*"
+        resp_headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
+        resp_headers["Access-Control-Allow-Credentials"] = "true"
 
         if response.status_code >= 500:
             logger.error(f"Upstream Critical Error from {url}: {response.content}")
@@ -114,6 +116,18 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
 async def gateway_router(request: Request, path: str):
+    # Handle CORS Preflight (OPTIONS) directly at the gateway for all routes
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin")
+        headers = {
+            "Access-Control-Allow-Origin": origin if origin else "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+        }
+        return Response(status_code=204, headers=headers)
+
     if path.startswith("auth"):
         # Auth service now uses /auth prefix internally, so don't strip
         return await reverse_proxy(request, AUTH_SERVICE_URL, prefix_to_strip=None)
