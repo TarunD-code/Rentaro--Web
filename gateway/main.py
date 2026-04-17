@@ -1,6 +1,6 @@
 import logging
 from fastapi import FastAPI, Request, HTTPException, Response
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -29,6 +29,7 @@ PAYMENT_SERVICE_URL = "http://127.0.0.1:8004"
 MAINTENANCE_SERVICE_URL = "http://127.0.0.1:8005"
 ONBOARDING_SERVICE_URL = "http://127.0.0.1:8006"
 COMMUNICATION_SERVICE_URL = "http://127.0.0.1:8007"
+NOTIFICATION_SERVICE_URL = "http://127.0.0.1:8008"
 
 # Reusable async HTTP client (avoids connection leak)
 http_client = httpx.AsyncClient(timeout=10.0)
@@ -105,6 +106,12 @@ async def reverse_proxy(request: Request, upstream_url: str, prefix_to_strip: st
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    # Skip rate limiting for frontend assets and root path
+    if request.method == "GET":
+        path = request.url.path
+        if path == "/" or "/assets/" in path or "." in path.split("/")[-1]:
+            return await call_next(request)
+            
     client_ip = request.client.host
     if not check_rate_limit(client_ip):
         return StreamingResponse(
@@ -143,7 +150,22 @@ async def gateway_router(request: Request, path: str):
         return await reverse_proxy(request, ONBOARDING_SERVICE_URL, prefix_to_strip="onboarding")
     elif path.startswith("communication"):
         return await reverse_proxy(request, COMMUNICATION_SERVICE_URL, prefix_to_strip="communication")
+    elif path.startswith("notification"):
+        return await reverse_proxy(request, NOTIFICATION_SERVICE_URL, prefix_to_strip="notification")
     
+    # Fallback to Frontend SPA routing
+    if request.method == "GET":
+        import os
+        # Try to serve raw file (e.g. assets, favicon)
+        dist_path = os.path.join("frontend", "dist", path)
+        if os.path.exists(dist_path) and os.path.isfile(dist_path):
+            return FileResponse(dist_path)
+        
+        # Default to index.html for SPA routing
+        index_path = os.path.join("frontend", "dist", "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+
     return StreamingResponse(
         iter([b'{"detail": "Route not found"}']),
         status_code=404,

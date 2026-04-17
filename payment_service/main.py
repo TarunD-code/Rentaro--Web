@@ -10,8 +10,9 @@ import logging
 import datetime
 from typing import Optional, List
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Header
+from fastapi import FastAPI, Depends, HTTPException, Request, Header, BackgroundTasks
 from sqlalchemy.orm import Session
+from .kafka_producer import emit_event
 from sqlalchemy import func
 import jwt
 
@@ -151,6 +152,7 @@ def verify_deposit_payment(
 @app.post("/rent/order", response_model=schemas.PaymentOut, status_code=201)
 def create_rent_order(
     data: schemas.RentPaymentCreate,
+    background_tasks: BackgroundTasks,
     user_info: dict = Depends(get_current_user_info),
     db: Session = Depends(database.get_db),
 ):
@@ -183,6 +185,18 @@ def create_rent_order(
     db.refresh(txn)
 
     logger.info(f"Rent order created: TXN-{txn.id}")
+
+    # Emit Sprint 17 Kafka Event
+    payload = {
+        "tenant_id": data.tenant_id,
+        "owner_id": data.owner_id,
+        "property_id": data.property_id,
+        "agreement_id": data.agreement_id,
+        "amount": data.amount,
+        "due_date": data.due_date.isoformat() if data.due_date else datetime.datetime.utcnow().isoformat()
+    }
+    background_tasks.add_task(emit_event, "rent.due", payload)
+
     return txn
 
 

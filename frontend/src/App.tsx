@@ -11,7 +11,6 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Profile = lazy(() => import('./pages/Profile'));
 const CreateProperty = lazy(() => import('./pages/CreateProperty'));
 const Listings = lazy(() => import('./pages/Listings'));
-const Home = lazy(() => import('./pages/Home'));
 const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
 const AgreementWorkflow = lazy(() => import('./pages/AgreementWorkflow'));
 const DepositPayment = lazy(() => import('./pages/DepositPayment'));
@@ -30,9 +29,11 @@ const OwnerPayoutDashboard = lazy(() => import('./pages/OwnerPayoutDashboard'));
 const StatementsPage = lazy(() => import('./pages/StatementsPage'));
 const ReconciliationAdmin = lazy(() => import('./pages/ReconciliationAdmin'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
+const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
+const NotificationPreferences = lazy(() => import('./pages/NotificationPreferences'));
 
-import { isFeatureEnabled } from './config/featureFlags';
-
+import ProtectedRoute from './components/ProtectedRoute';
+import useFCM from './hooks/useFCM';
 
 const LoadingScreen = () => {
   const theme = useTheme();
@@ -65,38 +66,46 @@ const LoadingScreen = () => {
 };
 
 const App: React.FC = () => {
+  useFCM();
   return (
     <Router>
       <Suspense fallback={<LoadingScreen />}>
         <Layout>
           <Routes>
+            {/* Public Routes */}
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/verify" element={<VerifyOTP />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/create" element={<CreateProperty />} />
+            
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/create" element={<ProtectedRoute><CreateProperty /></ProtectedRoute>} />
             <Route path="/listings/:id" element={<PropertyDetail />} />
             <Route path="/listings" element={<Listings />} />
-            <Route path="/agreements/:id" element={<AgreementWorkflow />} />
-            <Route path="/payments/deposit/:agreementId" element={<DepositPayment />} />
-            <Route path="/payments/autopay" element={<AutoPaySetup />} />
-            <Route path="/payments/history" element={<PaymentHistory />} />
-            <Route path="/moveout/initiate/:agreementId" element={<MoveOutInitiate />} />
-            <Route path="/moveout/review/:moveoutId" element={<MoveOutReview />} />
-            <Route path="/moveout/settlement/:settlementId" element={<SettlementPage />} />
-            <Route path="/maintenance/request" element={<ServiceRequestForm />} />
-            <Route path="/maintenance/assign" element={<OwnerAssignmentPanel />} />
-            <Route path="/maintenance/tasks" element={<VendorTaskView />} />
-            <Route path="/maintenance/history" element={<MaintenanceHistory />} />
-            <Route path="/onboarding/form" element={<OnboardingForm />} />
-            <Route path="/onboarding/agreements" element={<AgreementPage />} />
-            <Route path="/payouts" element={<OwnerPayoutDashboard />} />
-            <Route path="/statements" element={<StatementsPage />} />
-            <Route path="/reconciliation" element={<ReconciliationAdmin />} />
-            <Route path="/chat/:receiverId" element={<ChatPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/agreements/:id" element={<ProtectedRoute><AgreementWorkflow /></ProtectedRoute>} />
+            <Route path="/payments/deposit/:agreementId" element={<ProtectedRoute><DepositPayment /></ProtectedRoute>} />
+            <Route path="/payments/autopay" element={<ProtectedRoute><AutoPaySetup /></ProtectedRoute>} />
+            <Route path="/payments/history" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
+            <Route path="/moveout/initiate/:agreementId" element={<ProtectedRoute><MoveOutInitiate /></ProtectedRoute>} />
+            <Route path="/moveout/review/:moveoutId" element={<ProtectedRoute><MoveOutReview /></ProtectedRoute>} />
+            <Route path="/moveout/settlement/:settlementId" element={<ProtectedRoute><SettlementPage /></ProtectedRoute>} />
+            <Route path="/maintenance/request" element={<ProtectedRoute><ServiceRequestForm /></ProtectedRoute>} />
+            <Route path="/maintenance/assign" element={<ProtectedRoute><OwnerAssignmentPanel /></ProtectedRoute>} />
+            <Route path="/maintenance/tasks" element={<ProtectedRoute><VendorTaskView /></ProtectedRoute>} />
+            <Route path="/maintenance/history" element={<ProtectedRoute><MaintenanceHistory /></ProtectedRoute>} />
+            <Route path="/onboarding/form" element={<ProtectedRoute><OnboardingForm /></ProtectedRoute>} />
+            <Route path="/onboarding/agreements" element={<ProtectedRoute><AgreementPage /></ProtectedRoute>} />
+            <Route path="/payouts" element={<ProtectedRoute><OwnerPayoutDashboard /></ProtectedRoute>} />
+            <Route path="/statements" element={<ProtectedRoute><StatementsPage /></ProtectedRoute>} />
+            <Route path="/reconciliation" element={<ProtectedRoute allowedRoles={['admin']}><ReconciliationAdmin /></ProtectedRoute>} />
+            <Route path="/chat/:receiverId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
+            <Route path="/notifications/preferences" element={<ProtectedRoute><NotificationPreferences /></ProtectedRoute>} />
+
+            {/* Root Redirect logic: Always land on login as per requirement */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

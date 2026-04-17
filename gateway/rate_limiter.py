@@ -5,8 +5,8 @@ from collections import defaultdict
 # since docker/redis were not found on this Windows system.
 RATE_LIMITS = defaultdict(list)
 
-# Max 20 requests per minute
-MAX_REQUESTS = 20
+# Max 500 requests per minute
+MAX_REQUESTS = 500
 WINDOW_SECONDS = 60
 
 def check_rate_limit(client_ip: str) -> bool:

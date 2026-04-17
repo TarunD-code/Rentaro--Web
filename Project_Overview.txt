@@ -1,0 +1,88 @@
+PROJECT OVERVIEW: RENTORA
+==========================
+
+1. INTRODUCTION & PURPOSE
+-------------------------
+Rentora is a premium, comprehensive property rental and management platform designed to streamline the interaction between tenants, property owners, and administrators. 
+
+Main Purpose:
+The platform serves as a unified digital ecosystem for the end-to-end rental lifecycle—from property discovery and onboarding to payment management and maintenance support.
+
+User Benefits:
+- Tenants: Seamless map-based property search, automated digital agreements, real-time communication with owners, and hassle-free rent payments.
+- Owners: Efficient property listing tools, automated rent collection, tenant screening, and simplified maintenance request handling.
+- Admins: System-wide oversight, financial reconciliation tools, and platform governance to ensure transparency and trust.
+
+2. ARCHITECTURE (TECHNICAL)
+---------------------------
+Rentora follows a modern, distributed microservices architecture designed for high availability and horizontal scalability.
+
+Layered Approach:
+- Frontend: High-performance Single Page Application (SPA) built with React and TypeScript.
+- Backend: A suite of specialized microservices (Auth, Profile, Property, Payment, Onboarding, Communication) communicating via a unified API Gateway.
+- Database: Hybrid database strategy using relational storage for transactional data and document-based storage for flexible messaging.
+
+Architecture Diagram:
+[Client (Mobile/Web)] 
+      ↓ (HTTPS / WSS)
+[API Gateway (FastAPI)] 
+      ↓ (Internal Routing)
+[Auth] [Profile] [Property] [Payment] [Onboarding] [Communication]
+      ↓                  ↓                   ↓
+[PostgreSQL]        [PostgreSQL]        [MongoDB/Redis]
+
+Microservices & Integration:
+- Microservices: Decoupled services allow independent scaling and deployment of critical features like payments or search.
+- Communication Service: Node.js/Socket.io service for low-latency messaging.
+- External Integrations: 
+    - Twilio Voice API: Masked calling to protect user privacy.
+    - MapTiler/Map APIs: Advanced geolocation and interactive property mapping.
+
+3. STANDOUT FEATURES
+--------------------
+- Real-time Chat: Instant messaging powered by WebSockets (Socket.io) with persistence for message history.
+- Map-Based Search: Interactive UI allowing users to browse listings geographically with zoom-responsive markers and POI data.
+- Role-Based Dashboards: Tailored interfaces for Tenants, Owners, and Admins, ensuring relevant metrics and actions are front-and-center.
+- Automated Workflows: Digital agreement generation, OTP-based verification, and automated rent reminders.
+- Secure Auth: Robust authentication using JWT (JSON Web Tokens) with granular role-based access control (RBAC).
+
+4. DEVELOPMENT PROCESS
+----------------------
+- Agile Methodology: Development organized into two-week Sprints following the Scrum framework.
+- Ceremony: Participation in Sprint Planning, Daily Stand-ups, and Sprint Reviews to maintain transparency and momentum.
+- CI/CD: Automated pipelines via GitHub Actions for continuous integration (testing) and deployment to staging/production environments.
+- QA Strategy: Layered testing approach combining Unit tests (Pytest/Jest), manual QA, and End-to-End (E2E) automation with Cypress.
+
+5. TECH STACK
+-------------
+- Frontend: React, TypeScript, Vite, Material UI (MUI), Framer Motion.
+- Backend: FastAPI (Python) for core logic, Node.js/TypeScript for real-time services.
+- Database: 
+    - PostgreSQL: Primary relational database for structured data.
+    - MongoDB: Document store for chat history and unstructured data.
+- Communication: RESTful APIs + WebSockets (Socket.io).
+- Cloud Infrastructure: AWS (EC2 for hosting, S3 for media storage, RDS for database management).
+
+6. ADVANTAGES OF TECH STACK
+---------------------------
+- React + TypeScript: Provides a robust, type-safe development environment with fast re-rendering and a component-based architecture that speeds up feature shipping.
+- FastAPI: Offers high-performance async support (comparable to Go/Node.js) with automatic OpenAPI documentation.
+- PostgreSQL: Ensures data integrity and ACID compliance for complex financial transactions and property relationships.
+- MongoDB: Allows for flexible, schema-less message structures that can evolve as chat features grow.
+- Node.js: The event-driven, non-blocking I/O model is ideal for handling thousands of simultaneous WebSocket connections.
+
+7. DATABASE & API INTEGRATION
+-----------------------------
+- Data Modeling: PostgreSQL handles core entities (Users, Properties, Agreements, Payments), while MongoDB stores high-volume chat messages.
+- Integration Layer: Backend services use ORMs like SQLAlchemy (Python) and Motor (Python/MongoDB) to interact with databases efficiently.
+- API Design: Services expose clean REST endpoints secured by JWT. The Gateway aggregates these services into a single entry point for the frontend.
+- Consumption: The React frontend consumes these APIs using the Fetch API/Axios, with unified error handling and loading states provided via custom hooks.
+
+8. INTERVIEW NARRATIVE
+----------------------
+When presenting Rentora, focus on the problem-solving aspect:
+- Start with the user: "Rentora solves the transparency gap in the rental market by providing a unified platform where every action—from search to payment—is logged and verified."
+- Explain the 'Why': "We chose a microservices architecture not just for trend-following, but to allow our Payment service to scale independently of our high-traffic Property search service."
+- Highlight the Engineering: "The integration of real-time WebSockets with a secondary MongoDB store ensures that our chat is both fast and persistent."
+- Process Focus: "Our Agile approach and CI/CD pipeline ensured we could deploy new features like 'Map Search' without breaking existing 'Digital Agreements' workflows."
+- Conclusion: "By combining high-performance Python backends with a type-safe React frontend, we created a tool that solves real-world rental logistics challenges."

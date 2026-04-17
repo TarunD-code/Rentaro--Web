@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { saveMessage, getMessages } from './database';
 import { initiateMaskedCall } from './services/TwilioService';
+import { emitMessageEvent } from './producer';
 
 dotenv.config();
 
@@ -76,6 +77,9 @@ io.on('connection', (socket) => {
 
     // Broadcast to the room (both sender and receiver should be in it)
     io.to(conversation_id).emit('receive_message', message);
+
+    // Sprint 17: Emit Kafka Event for Push Notifications
+    emitMessageEvent(message);
   });
 
   socket.on('typing', (data) => {

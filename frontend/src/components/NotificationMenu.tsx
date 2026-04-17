@@ -32,12 +32,12 @@ const NotificationMenu: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/notifications`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/notification/`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data);
+        setNotifications(data.slice(0, 10)); // Top 10 in menu
       }
     } catch (err) {
       console.error(err);
@@ -61,7 +61,7 @@ const NotificationMenu: React.FC = () => {
   const markAsRead = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`${import.meta.env.VITE_API_URL}/profile/notifications/${id}/read`, {
+      await fetch(`${import.meta.env.VITE_API_URL}/notification/${id}/read`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });

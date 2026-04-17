@@ -263,7 +263,7 @@ const Listings: React.FC = () => {
           </ToggleButtonGroup>
         </Box>
 
-        <Box display="flex" gap={2} flexWrap="wrap" position="relative">
+        <Box display="flex" gap={2} flexWrap="wrap" position="relative" sx={{ zIndex: 1100 }}>
           <TextField 
             placeholder="Search locations, building names..."
             value={searchQuery}
