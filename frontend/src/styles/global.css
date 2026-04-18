@@ -1,0 +1,39 @@
+/* Map and Search Overlay Z-index Management */
+
+.map-container {
+  position: relative !important;
+  z-index: 0 !important;
+}
+
+.map-canvas, 
+.leaflet-container, 
+.mapboxgl-canvas {
+  z-index: 0 !important;
+  position: relative !important;
+}
+
+.search-bar-wrapper {
+  position: relative;
+  z-index: 1000;
+}
+
+.search-suggestions-portal {
+  position: absolute;
+  z-index: 2000; /* High enough to be above header/appbar if needed */
+  background: #ffffff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
+}
+
+/* Custom Marker styles to ensure they don't fight for z-index */
+.leaflet-pane {
+  z-index: 400 !important;
+}
+
+.leaflet-top, 
+.leaflet-bottom {
+  z-index: 500 !important;
+}
