@@ -242,12 +242,7 @@ const Listings: React.FC = () => {
         </Box>
 
         <Box display="flex" gap={2} flexWrap="wrap" position="relative">
-<<<<<<< Updated upstream
-          <TextField 
-            placeholder="Search locations, building names..."
-=======
           <SearchBar 
->>>>>>> Stashed changes
             value={searchQuery}
             onChange={setSearchQuery}
             onSearch={fetchProperties}
