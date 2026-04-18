@@ -33,6 +33,7 @@ const ChatPage = lazy(() => import('./pages/ChatPage'));
 const OwnerPremiumDashboard = lazy(() => import('./pages/owner/OwnerDashboard'));
 const FeaturedListings = lazy(() => import('./pages/owner/FeaturedListings'));
 const ReportCenter = lazy(() => import('./pages/owner/ReportCenter'));
+const SubscriptionLanding = lazy(() => import('./pages/tenant/SubscriptionLanding'));
 
 import { isFeatureEnabled } from './config/featureFlags';
 
@@ -103,6 +104,8 @@ const App: React.FC = () => {
             <Route path="/owner/dashboard" element={<OwnerPremiumDashboard />} />
             <Route path="/owner/premium" element={<FeaturedListings />} />
             <Route path="/owner/reports" element={<ReportCenter />} />
+            
+            <Route path="/tenant/subscription" element={<SubscriptionLanding />} />
 
             <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
 

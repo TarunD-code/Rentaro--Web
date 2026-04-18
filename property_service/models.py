@@ -24,6 +24,10 @@ class Property(Base):
     commute_score = Column(Float, nullable=True) # Normalized 1-10 string mapped score
     status = Column(String, default="available")  # available, occupied, maintenance, unlisted
     available_from = Column(DateTime, nullable=True)
+    is_verified = Column(Boolean, default=False)
+    owner_verified = Column(Boolean, default=False)
+    is_furnished = Column(Boolean, default=False)
+    is_pet_friendly = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     

@@ -48,6 +48,10 @@ const Listings: React.FC = () => {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
+  const [distance, setDistance] = useState(5);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [petFriendly, setPetFriendly] = useState(false);
+  const [furnished, setFurnished] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<number[]>([0, 200000]);

@@ -82,6 +82,17 @@ def update_property_status(
     logger.info(f"Property #{property_id} status updated to '{new_status}'")
     return {"id": prop.id, "status": prop.status, "available_from": str(prop.available_from)}
 
+import math
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculate the great circle distance between two points on the earth."""
+    R = 6371 # Earth radius in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
 @app.get("/", response_model=List[schemas.PropertyOut])
 def list_properties(
     q: Optional[str] = None,
@@ -90,6 +101,13 @@ def list_properties(
     property_type: Optional[str] = None,
     amenities: Optional[str] = None,
     featured: Optional[bool] = None,
+    verified: Optional[bool] = None,
+    owner_verified: Optional[bool] = None,
+    furnished: Optional[bool] = None,
+    pet_friendly: Optional[bool] = None,
+    near_lat: Optional[float] = None,
+    near_lng: Optional[float] = None,
+    max_dist_km: Optional[float] = 5.0,
     limit: Optional[int] = 100,
     db: Session = Depends(database.get_db)
 ):
@@ -104,13 +122,33 @@ def list_properties(
     if property_type:
         query = query.filter(models.Property.property_type == property_type)
     if amenities:
-        # Check if the property amenities string contains the requested amenities (comma separated matching)
         for amt in amenities.split(","):
             query = query.filter(models.Property.amenities.contains(amt.strip()))
     if featured is not None:
         query = query.filter(models.Property.is_featured == featured)
+    if verified is not None:
+        query = query.filter(models.Property.is_verified == verified)
+    if owner_verified is not None:
+        query = query.filter(models.Property.owner_verified == owner_verified)
+    if furnished is not None:
+        query = query.filter(models.Property.is_furnished == furnished)
+    if pet_friendly is not None:
+        query = query.filter(models.Property.is_pet_friendly == pet_friendly)
         
-    properties = query.limit(limit).all()
+    properties = query.all()
+
+    # Manual Distance Filter (Haversine) - Since SQLite lacks native spatial indices
+    if near_lat is not None and near_lng is not None:
+        filtered = []
+        for p in properties:
+            if p.lat and p.lng:
+                dist = haversine_distance(near_lat, near_lng, p.lat, p.lng)
+                if dist <= max_dist_km:
+                    filtered.append(p)
+        properties = filtered
+
+    results = []
+    for prop in properties[:limit]:
     
     # Manually map to handle MediaItem field mismatches (url vs raw_url, etc.)
     results = []
