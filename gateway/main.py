@@ -29,6 +29,8 @@ PAYMENT_SERVICE_URL = "http://127.0.0.1:8004"
 MAINTENANCE_SERVICE_URL = "http://127.0.0.1:8005"
 ONBOARDING_SERVICE_URL = "http://127.0.0.1:8006"
 COMMUNICATION_SERVICE_URL = "http://127.0.0.1:8007"
+BILLING_SERVICE_URL = "http://127.0.0.1:8009"
+OWNER_DASHBOARD_SERVICE_URL = "http://127.0.0.1:8010"
 
 # Reusable async HTTP client (avoids connection leak)
 http_client = httpx.AsyncClient(timeout=10.0)
@@ -143,6 +145,10 @@ async def gateway_router(request: Request, path: str):
         return await reverse_proxy(request, ONBOARDING_SERVICE_URL, prefix_to_strip="onboarding")
     elif path.startswith("communication"):
         return await reverse_proxy(request, COMMUNICATION_SERVICE_URL, prefix_to_strip="communication")
+    elif path.startswith("billing"):
+        return await reverse_proxy(request, BILLING_SERVICE_URL, prefix_to_strip="billing")
+    elif path.startswith("owner-dashboard"):
+        return await reverse_proxy(request, OWNER_DASHBOARD_SERVICE_URL, prefix_to_strip="owner-dashboard")
     
     return StreamingResponse(
         iter([b'{"detail": "Route not found"}']),

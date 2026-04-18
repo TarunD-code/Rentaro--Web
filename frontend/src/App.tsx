@@ -30,6 +30,9 @@ const OwnerPayoutDashboard = lazy(() => import('./pages/OwnerPayoutDashboard'));
 const StatementsPage = lazy(() => import('./pages/StatementsPage'));
 const ReconciliationAdmin = lazy(() => import('./pages/ReconciliationAdmin'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
+const OwnerPremiumDashboard = lazy(() => import('./pages/owner/OwnerDashboard'));
+const FeaturedListings = lazy(() => import('./pages/owner/FeaturedListings'));
+const ReportCenter = lazy(() => import('./pages/owner/ReportCenter'));
 
 import { isFeatureEnabled } from './config/featureFlags';
 
@@ -96,6 +99,11 @@ const App: React.FC = () => {
             <Route path="/reconciliation" element={<ReconciliationAdmin />} />
             <Route path="/chat/:receiverId" element={<ChatPage />} />
             <Route path="/chat" element={<ChatPage />} />
+            
+            <Route path="/owner/dashboard" element={<OwnerPremiumDashboard />} />
+            <Route path="/owner/premium" element={<FeaturedListings />} />
+            <Route path="/owner/reports" element={<ReportCenter />} />
+
             <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
