@@ -34,7 +34,7 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
 
 const OwnerDashboard: React.FC = () => {
     const theme = useTheme();
@@ -46,15 +46,21 @@ const OwnerDashboard: React.FC = () => {
     const fetchMetrics = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const ownerId = user.user_identifier;
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : {};
+            // Robust ownerId fallback
+            const ownerId = user.user_identifier || user.owner_id || user.id;
             
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/owner-dashboard/owners/${ownerId}/metrics`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
-            if (response.ok) setMetrics(data);
+            if (!ownerId) {
+                console.error("Owner identity not found in session.");
+                return;
+            }
+
+            const response = await api.get(`/owner-dashboard/owners/${ownerId}/metrics`);
+            if (response && response.ok) {
+                const data = await response.json();
+                setMetrics(data);
+            }
         } catch (err) {
             console.error("Failed to fetch dashboard metrics", err);
         } finally {
@@ -74,7 +80,7 @@ const OwnerDashboard: React.FC = () => {
 
     if (loading) return (
         <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-            <CircularProgress color="primary" />
+            <CircularProgress color="primary" thickness={4} />
         </Box>
     );
 
@@ -103,7 +109,8 @@ const OwnerDashboard: React.FC = () => {
                         onClick={() => navigate('/owner/premium')}
                         sx={{ 
                             background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                            boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)'
+                            boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)',
+                            borderRadius: 3
                         }}
                     >
                         Boost Listings
@@ -113,7 +120,7 @@ const OwnerDashboard: React.FC = () => {
 
             <Grid container spacing={3} mb={4}>
                 {stats.map((stat, i) => (
-                    <Grid item xs={12} md={4} key={i}>
+                    <Grid size={{ xs: 12, md: 4 }} key={i}>
                         <Paper elevation={0} sx={{ 
                             p: 3, 
                             borderRadius: 4, 
@@ -137,7 +144,7 @@ const OwnerDashboard: React.FC = () => {
             </Grid>
 
             <Grid container spacing={4}>
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Paper elevation={0} sx={{ p: 4, borderRadius: 6, border: `1px solid ${theme.palette.divider}`, minHeight: 400 }}>
                         <Typography variant="h6" fontWeight={700} mb={3}>Revenue Trend</Typography>
                         <Box sx={{ width: '100%', height: 350 }}>
@@ -174,7 +181,7 @@ const OwnerDashboard: React.FC = () => {
                     </Paper>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card elevation={0} sx={{ borderRadius: 6, border: `1px solid ${theme.palette.divider}`, height: '100%' }}>
                         <CardContent sx={{ p: 4 }}>
                             <Typography variant="h6" fontWeight={700} mb={3}>Portfolio Health</Typography>

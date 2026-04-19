@@ -27,7 +27,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ agreements, metrics }) 
        {/* Global Stats */}
       <Grid container spacing={3} mb={5}>
         {adminStats.map((stat, i) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
+          <Grid key={i} size={{ xs: 12, sm: 6, md: 3 }}>
             <Paper 
               sx={{ 
                 p: 2.5, 

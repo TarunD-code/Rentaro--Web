@@ -30,6 +30,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
+import { api } from '../services/api';
+
 const Profile: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -46,23 +48,10 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await api.get('/profile/');
         
-        let data;
-        try {
-          data = await response.json();
-        } catch (e) {
-          throw new Error('Invalid profile response');
-        }
-
-        if (response.ok) {
+        if (response && response.ok) {
+          const data = await response.json();
           setProfile(data);
           setFormData({
             first_name: data.first_name || '',
@@ -82,19 +71,16 @@ const Profile: React.FC = () => {
           else if (data.kyc_status === 'pending_review') setKycStep(2);
           else if (data.kyc_status === 'draft') setKycStep(1);
           else setKycStep(0);
-        } else {
-          setError('Unable to fetch profile data. Please try again.');
         }
-      } catch (err) {
-        console.error('Profile connection error:', err);
-        setError('Connection to profile service failed. Please try again or log in again.');
-
+      } catch (err: any) {
+        console.error('Profile error:', err);
+        setError(err.message || 'Connection to profile service failed.');
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [navigate]);
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,37 +93,26 @@ const Profile: React.FC = () => {
 
     setLoading(true);
     setError(null);
-    const formData = new FormData();
-    formData.append('file', file);
+    const body = new FormData();
+    body.append('file', file);
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/upload-doc?document_type=ID_PROOF`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body,
       });
       
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        throw new Error('Invalid upload response');
-      }
-
       if (!response.ok) {
-        const detail = typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail;
-        throw new Error(detail || 'Upload failed');
+        const data = await response.json().catch(() => ({ detail: 'Upload failed' }));
+        throw new Error(data.detail || 'Upload failed');
       }
       
-      // Fetch profile again to update document list
-      const profResp = await fetch(`${import.meta.env.VITE_API_URL}/profile/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (profResp.ok) setProfile(await profResp.json());
+      const profResp = await api.get('/profile/');
+      if (profResp?.ok) setProfile(await profResp.json());
       
       setKycStep(1);
-      setSuccess('Document uploaded successfully! You can submit for review now.');
+      setSuccess('Document uploaded successfully!');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -149,26 +124,18 @@ const Profile: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Only JPG or PNG format is allowed for profile photo.');
-      return;
-    }
-
     setLoading(true);
-    setError(null);
-    const formData = new FormData();
-    formData.append('file', file);
+    const body = new FormData();
+    body.append('file', file);
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/upload-photo`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body,
       });
       
       if (!response.ok) throw new Error('Photo upload failed');
-      
       const data = await response.json();
       setProfile({ ...profile, photo_url: data.photo_url });
       setSuccess('Profile photo updated!');
@@ -182,21 +149,12 @@ const Profile: React.FC = () => {
   const handleSubmitKyc = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/submit-kyc`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const detail = typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail;
-        throw new Error(detail || 'Submission failed');
+      const response = await api.post('/profile/submit-kyc');
+      if (response?.ok) {
+        setProfile({ ...profile, kyc_status: 'pending_review' });
+        setKycStep(2);
+        setSuccess('KYC submitted for review.');
       }
-      
-      setProfile({ ...profile, kyc_status: 'pending_review' });
-      setKycStep(2);
-      setSuccess('KYC submitted for review.');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -207,23 +165,14 @@ const Profile: React.FC = () => {
   const handleVerifyKyc = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/verify-kyc`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const detail = typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail;
-        throw new Error(detail || 'Verification request failed');
+      const response = await api.post('/profile/verify-kyc');
+      if (response?.ok) {
+         setTimeout(() => {
+          setProfile((prev: any) => ({ ...prev, kyc_status: 'verified' }));
+          setKycStep(3);
+          setLoading(false);
+        }, 1500);
       }
-      // Mock instant verification for this demo
-      setTimeout(() => {
-        setProfile({ ...profile, kyc_status: 'verified' });
-        setKycStep(3);
-        setLoading(false);
-      }, 1500);
     } catch (err) {
       setError('Verification trigger failed');
       setLoading(false);
@@ -233,21 +182,11 @@ const Profile: React.FC = () => {
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/`, {
-        method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      if (response.ok) {
+      const response = await api.put('/profile/', formData);
+      if (response?.ok) {
         const data = await response.json();
         setProfile(data);
         setSuccess('Profile updated successfully!');
-      } else {
-        throw new Error('Failed to update profile');
       }
     } catch (err: any) {
       setError(err.message);

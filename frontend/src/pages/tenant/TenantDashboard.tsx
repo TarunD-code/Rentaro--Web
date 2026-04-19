@@ -9,21 +9,24 @@ const TenantDashboardPage: React.FC = () => {
   const [agreements, setAgreements] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
 
+import { api } from '../../services/api';
+
+const TenantDashboardPage: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [agreements, setAgreements] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const agResp = await fetch(`${import.meta.env.VITE_API_URL}/property/agreements/user/list`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (agResp.ok) setAgreements(await agResp.json());
+        const agResp = await api.get('/property/agreements/user/list');
+        if (agResp && agResp.ok) setAgreements(await agResp.json());
 
-        const metResp = await fetch(`${import.meta.env.VITE_API_URL}/property/metrics`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (metResp.ok) setMetrics(await metResp.json());
-      } catch (err) {
-        setError('Failed to load dashboard data');
+        const metResp = await api.get('/property/metrics');
+        if (metResp && metResp.ok) setMetrics(await metResp.json());
+      } catch (err: any) {
+        setError(err.message || 'Failed to load dashboard data');
       } finally {
         setLoading(false);
       }
