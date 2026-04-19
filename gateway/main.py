@@ -115,7 +115,13 @@ async def rate_limit_middleware(request: Request, call_next):
         return StreamingResponse(
             iter([b'{"detail": "Too many requests. Please slow down."}']),
             status_code=429,
-            headers={"Content-Type": "application/json"}
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
+                "Access-Control-Allow-Credentials": "true"
+            }
         )
     return await call_next(request)
 

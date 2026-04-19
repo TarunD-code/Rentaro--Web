@@ -16,14 +16,29 @@ const AdminDashboardPage: React.FC = () => {
         const agResp = await fetch(`${import.meta.env.VITE_API_URL}/property/agreements/user/list`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        if (agResp.status === 429) {
+            setError('Too many requests. Please wait a minute before refreshing.');
+            setLoading(false);
+            return;
+        }
+        
         if (agResp.ok) setAgreements(await agResp.json());
 
         const metResp = await fetch(`${import.meta.env.VITE_API_URL}/property/metrics`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        if (metResp.status === 429) {
+            setError('Rate limit exceeded. Please slow down.');
+            setLoading(false);
+            return;
+        }
+
         if (metResp.ok) setMetrics(await metResp.json());
       } catch (err) {
-        setError('Failed to load admin dashboard data');
+        console.error('Admin Dashboard Error:', err);
+        setError('Connection failed. Please ensure the API Gateway and services are running.');
       } finally {
         setLoading(false);
       }

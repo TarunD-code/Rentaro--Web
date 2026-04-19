@@ -43,6 +43,11 @@ const NotificationMenu: React.FC = () => {
           return;
       }
       
+      if (res.status === 429) {
+          console.warn("[NotificationMenu] Rate limited. Skipping this cycle.");
+          return;
+      }
+      
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
@@ -54,7 +59,7 @@ const NotificationMenu: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000);
+    const interval = setInterval(fetchNotifications, 30000); // 30s interval
     return () => clearInterval(interval);
   }, []);
 
