@@ -1,55 +1,5 @@
-import React, { useState } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
-  Box, 
-  Container, 
-  useScrollTrigger, 
-  Slide, 
-  Paper, 
-  BottomNavigation, 
-  BottomNavigationAction,
-  useMediaQuery,
-  useTheme,
-  Menu,
-  MenuItem,
-  Avatar,
-  Tooltip,
-  alpha
-} from '@mui/material';
-import { 
-  AccountCircle, 
-  Dashboard as DashboardIcon, 
-  Search as ListingsIcon, 
-  AddCircle as AddIcon,
-  Language,
-  ExitToApp
-} from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useThemeContext } from '../context/ThemeContext';
-import { useTranslation } from 'react-i18next';
-import { palettes } from '../theme';
-import type { PaletteVariant } from '../theme';
-import { Palette as PaletteIcon, Check } from '@mui/icons-material';
-import NotificationMenu from './NotificationMenu';
-
-interface Props {
-  children: React.ReactNode;
-}
-
-function HideOnScroll(props: { children: React.ReactElement }) {
-  const { children } = props;
-  const trigger = useScrollTrigger();
-
-  return (
-    <Slide direction="down" in={!trigger}>
-      {children}
-    </Slide>
-  );
-}
+import AppMenu from './AppMenu';
+import { Menu as MenuIcon } from '@mui/icons-material';
 
 const Layout: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
@@ -59,13 +9,9 @@ const Layout: React.FC<Props> = ({ children }) => {
   const { palette, setPalette } = useThemeContext();
   const { t, i18n } = useTranslation();
 
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [langAnchorEl, setLangAnchorEl] = useState<null | HTMLElement>(null);
   const [paletteAnchorEl, setPaletteAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
 
   const handleLangMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setLangAnchorEl(event.currentTarget);
@@ -76,20 +22,12 @@ const Layout: React.FC<Props> = ({ children }) => {
   };
 
   const handleMenuClose = () => {
-    setAnchorEl(null);
     setLangAnchorEl(null);
     setPaletteAnchorEl(null);
   };
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
-    handleMenuClose();
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    navigate('/login');
     handleMenuClose();
   };
 
@@ -100,17 +38,6 @@ const Layout: React.FC<Props> = ({ children }) => {
   React.useEffect(() => {
     setRole(localStorage.getItem('role'));
   }, [location.pathname]);
-
-  // Define nav items based on role
-  const navItems = [
-    { label: t('dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-    { label: t('browse_listings'), icon: <ListingsIcon />, path: '/listings' },
-    ...((role === 'owner' || role === 'admin') ? 
-      [{ label: t('add_property'), icon: <AddIcon />, path: '/create' }] : []),
-    { label: t('profile'), icon: <AccountCircle />, path: '/profile' }
-  ];
-
-
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -128,38 +55,40 @@ const Layout: React.FC<Props> = ({ children }) => {
           >
             <Container maxWidth="lg">
               <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-                <Box 
-                  display="flex" 
-                  alignItems="center" 
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <Typography 
-                    variant="h5" 
-                    component="div" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      color: theme.palette?.primary?.main || '#0A3D62',
-                      letterSpacing: -0.5
-                    }}
+                <Box display="flex" alignItems="center" gap={1}>
+                  <IconButton 
+                    edge="start" 
+                    color="inherit" 
+                    aria-label="menu" 
+                    onClick={() => setMenuOpen(true)}
+                    sx={{ mr: 1, bgcolor: alpha(theme.palette.primary.main, 0.05) }}
                   >
-                    Rentora
-                  </Typography>
+                    <MenuIcon />
+                  </IconButton>
+                  <Box 
+                    display="flex" 
+                    alignItems="center" 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => navigate('/')}
+                  >
+                    <Typography 
+                      variant="h5" 
+                      component="div" 
+                      sx={{ 
+                        fontWeight: 700, 
+                        color: theme.palette?.primary?.main || '#0A3D62',
+                        letterSpacing: -0.5
+                      }}
+                    >
+                      Rentora
+                    </Typography>
+                  </Box>
                 </Box>
 
                 {!isMobile && (
                   <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button color="inherit" onClick={() => navigate('/dashboard')}>{t('dashboard')}</Button>
+                    <Button color="inherit" onClick={() => navigate('/')}>{t('dashboard')}</Button>
                     <Button color="inherit" onClick={() => navigate('/listings')}>{t('browse_listings')}</Button>
-                    {(role === 'owner' || role === 'admin') && (
-                      <Button 
-                        variant="contained" 
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('/create')}
-                      >
-                        {t('add_property')}
-                      </Button>
-                    )}
                   </Box>
                 )}
 
@@ -206,8 +135,7 @@ const Layout: React.FC<Props> = ({ children }) => {
                   <IconButton
                     edge="end"
                     aria-label="account of current user"
-                    aria-haspopup="true"
-                    onClick={handleProfileMenuOpen}
+                    onClick={() => setMenuOpen(true)}
                     color="inherit"
                   >
                     <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette?.primary?.main || '#0A3D62' }}>
@@ -220,6 +148,8 @@ const Layout: React.FC<Props> = ({ children }) => {
           </AppBar>
         </HideOnScroll>
       )}
+
+      <AppMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       {/* Language Menu */}
       <Menu
@@ -262,21 +192,6 @@ const Layout: React.FC<Props> = ({ children }) => {
             {palette === v && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
           </MenuItem>
         ))}
-      </Menu>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
-          <AccountCircle sx={{ mr: 1, fontSize: 20 }} /> {t('profile')}
-        </MenuItem>
-        <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-          <ExitToApp sx={{ mr: 1, fontSize: 20 }} /> {t('logout')}
-        </MenuItem>
       </Menu>
 
       <Box 

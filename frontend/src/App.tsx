@@ -68,46 +68,71 @@ const LoadingScreen = () => {
   );
 };
 
+import ProtectedRoute from './components/ProtectedRoute';
+
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const TenantDashboard = lazy(() => import('./pages/tenant/TenantDashboard'));
+
 const App: React.FC = () => {
+    const isAuthenticated = !!localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+
+    const getDefaultDashboard = () => {
+        if (role === 'owner') return '/owner/dashboard';
+        if (role === 'admin') return '/admin/dashboard';
+        return '/tenant/dashboard';
+    };
+
   return (
     <Router>
       <Suspense fallback={<LoadingScreen />}>
         <Layout>
           <Routes>
+            {/* Public Routes */}
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/verify" element={<VerifyOTP />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/create" element={<CreateProperty />} />
+            
+            {/* Protected Routes */}
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/create" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><CreateProperty /></ProtectedRoute>} />
             <Route path="/listings/:id" element={<PropertyDetail />} />
             <Route path="/listings" element={<Listings />} />
-            <Route path="/agreements/:id" element={<AgreementWorkflow />} />
-            <Route path="/payments/deposit/:agreementId" element={<DepositPayment />} />
-            <Route path="/payments/autopay" element={<AutoPaySetup />} />
-            <Route path="/payments/history" element={<PaymentHistory />} />
-            <Route path="/moveout/initiate/:agreementId" element={<MoveOutInitiate />} />
-            <Route path="/moveout/review/:moveoutId" element={<MoveOutReview />} />
-            <Route path="/moveout/settlement/:settlementId" element={<SettlementPage />} />
-            <Route path="/maintenance/request" element={<ServiceRequestForm />} />
-            <Route path="/maintenance/assign" element={<OwnerAssignmentPanel />} />
-            <Route path="/maintenance/tasks" element={<VendorTaskView />} />
-            <Route path="/maintenance/history" element={<MaintenanceHistory />} />
-            <Route path="/onboarding/form" element={<OnboardingForm />} />
-            <Route path="/onboarding/agreements" element={<AgreementPage />} />
-            <Route path="/payouts" element={<OwnerPayoutDashboard />} />
-            <Route path="/statements" element={<StatementsPage />} />
-            <Route path="/reconciliation" element={<ReconciliationAdmin />} />
-            <Route path="/chat/:receiverId" element={<ChatPage />} />
-            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/agreements/:id" element={<ProtectedRoute><AgreementWorkflow /></ProtectedRoute>} />
+            <Route path="/payments/deposit/:agreementId" element={<ProtectedRoute><DepositPayment /></ProtectedRoute>} />
+            <Route path="/payments/autopay" element={<ProtectedRoute><AutoPaySetup /></ProtectedRoute>} />
+            <Route path="/payments/history" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
+            <Route path="/moveout/initiate/:agreementId" element={<ProtectedRoute><MoveOutInitiate /></ProtectedRoute>} />
+            <Route path="/moveout/review/:moveoutId" element={<ProtectedRoute><MoveOutReview /></ProtectedRoute>} />
+            <Route path="/moveout/settlement/:settlementId" element={<ProtectedRoute><SettlementPage /></ProtectedRoute>} />
+            <Route path="/maintenance/request" element={<ProtectedRoute><ServiceRequestForm /></ProtectedRoute>} />
+            <Route path="/maintenance/assign" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><OwnerAssignmentPanel /></ProtectedRoute>} />
+            <Route path="/maintenance/tasks" element={<ProtectedRoute><VendorTaskView /></ProtectedRoute>} />
+            <Route path="/maintenance/history" element={<ProtectedRoute><MaintenanceHistory /></ProtectedRoute>} />
+            <Route path="/onboarding/form" element={<ProtectedRoute><OnboardingForm /></ProtectedRoute>} />
+            <Route path="/onboarding/agreements" element={<ProtectedRoute><AgreementPage /></ProtectedRoute>} />
+            <Route path="/payouts" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><OwnerPayoutDashboard /></ProtectedRoute>} />
+            <Route path="/statements" element={<ProtectedRoute><StatementsPage /></ProtectedRoute>} />
+            <Route path="/reconciliation" element={<ProtectedRoute allowedRoles={['admin']}><ReconciliationAdmin /></ProtectedRoute>} />
+            <Route path="/chat/:receiverId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
             
-            <Route path="/owner/dashboard" element={<OwnerPremiumDashboard />} />
-            <Route path="/owner/premium" element={<FeaturedListings />} />
-            <Route path="/owner/reports" element={<ReportCenter />} />
+            {/* Role Specific Dashboards */}
+            <Route path="/dashboard" element={<Navigate to={getDefaultDashboard()} replace />} />
+            <Route path="/tenant/dashboard" element={<ProtectedRoute allowedRoles={['tenant', 'admin']}><TenantDashboard /></ProtectedRoute>} />
+            <Route path="/owner/dashboard" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><OwnerPremiumDashboard /></ProtectedRoute>} />
+            <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             
-            <Route path="/tenant/subscription" element={<SubscriptionLanding />} />
+            <Route path="/owner/premium" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><FeaturedListings /></ProtectedRoute>} />
+            <Route path="/owner/reports" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><ReportCenter /></ProtectedRoute>} />
+            <Route path="/tenant/subscription" element={<ProtectedRoute allowedRoles={['tenant']}><SubscriptionLanding /></ProtectedRoute>} />
 
-            <Route path="/" element={isFeatureEnabled('landing_v1') ? <Home /> : <Navigate to="/dashboard" replace />} />
+            {/* Entry Redirects */}
+            <Route path="/" element={
+                isAuthenticated 
+                    ? <Navigate to={getDefaultDashboard()} replace /> 
+                    : <Navigate to="/login" replace />
+            } />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

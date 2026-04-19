@@ -65,8 +65,13 @@ const VerifyOTP: React.FC = () => {
       }
       
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('role', data.role);
       setSuccess(true);
-      setTimeout(() => navigate('/dashboard'), 1500);
+      
+      const targetDashboard = data.role === 'owner' ? '/owner/dashboard' : 
+                              data.role === 'admin' ? '/admin/dashboard' : '/dashboard';
+                              
+      setTimeout(() => navigate(targetDashboard), 1500);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -70,7 +70,15 @@ const Login: React.FC = () => {
       }
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('role', data.role); // Save role for dashboard logic
-      navigate('/dashboard');
+      
+      // Redirect based on role
+      if (data.role === 'owner') {
+          navigate('/owner/dashboard');
+      } else if (data.role === 'admin') {
+          navigate('/admin/dashboard');
+      } else {
+          navigate('/dashboard'); // Tenant default
+      }
     } catch (err: any) {
       if (err.message === 'Failed to fetch') {
         setError('Connection failed. Please check if the API Gateway is running on port 8000.');
