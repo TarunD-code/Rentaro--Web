@@ -35,12 +35,20 @@ const NotificationMenu: React.FC = () => {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/notifications`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (res.status === 401) {
+          // Silent failure or token clear if unauthorized
+          localStorage.removeItem('token');
+          setNotifications([]);
+          return;
+      }
+      
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
       }
     } catch (err) {
-      console.error(err);
+      console.error("[NotificationMenu] Fetch failed:", err);
     }
   };
 

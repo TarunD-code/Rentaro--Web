@@ -37,16 +37,24 @@ const Dashboard: React.FC = () => {
           const profResp = await fetch(`${import.meta.env.VITE_API_URL}/profile/`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (!profResp.ok) throw new Error('Profile service unavailable');
+          
+          if (profResp.status === 401) {
+              localStorage.clear();
+              navigate('/login');
+              return;
+          }
+          
+          if (!profResp.ok) throw new Error(`Profile service unavailable (Status: ${profResp.status})`);
+          
           const profData = await profResp.json();
           setProfile(profData);
           
           // Ensure role persists
           const activeRole = localStorage.getItem('role') || 'tenant';
           profData.role = activeRole;
-        } catch (pErr) {
+        } catch (pErr: any) {
           console.error('Profile fetch failed:', pErr);
-          setError('Could not load profile details. Dashboard might be limited.');
+          setError(`Service connectivity issue: ${pErr.message || 'Profile unavailable'}`);
         }
 
         // Fetch Agreements
@@ -54,6 +62,7 @@ const Dashboard: React.FC = () => {
           const agResp = await fetch(`${import.meta.env.VITE_API_URL}/property/agreements/user/list`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          if (agResp.status === 401) return; // Main profile fetch handled redirect
           if (agResp.ok) setAgreements(await agResp.json());
         } catch (aErr) {
           console.error('Agreements fetch failed:', aErr);
@@ -64,6 +73,7 @@ const Dashboard: React.FC = () => {
           const metResp = await fetch(`${import.meta.env.VITE_API_URL}/property/metrics`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          if (metResp.status === 401) return;
           if (metResp.ok) setMetrics(await metResp.json());
           else console.warn('Metrics service responded with error');
         } catch (mErr) {

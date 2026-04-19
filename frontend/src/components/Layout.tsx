@@ -1,5 +1,51 @@
+import React, { useState } from 'react';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  IconButton, 
+  Box, 
+  Container, 
+  useScrollTrigger, 
+  Slide, 
+  useMediaQuery,
+  useTheme,
+  Menu,
+  MenuItem,
+  Avatar,
+  Tooltip,
+  alpha
+} from '@mui/material';
+import { 
+  AccountCircle, 
+  Language,
+  Palette as PaletteIcon, 
+  Check,
+  Menu as MenuIcon
+} from '@mui/icons-material';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useThemeContext } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { palettes } from '../theme';
+import type { PaletteVariant } from '../theme';
+import NotificationMenu from './NotificationMenu';
 import AppMenu from './AppMenu';
-import { Menu as MenuIcon } from '@mui/icons-material';
+
+interface Props {
+  children: React.ReactNode;
+}
+
+function HideOnScroll(props: { children: React.ReactElement }) {
+  const { children } = props;
+  const trigger = useScrollTrigger();
+
+  return (
+    <Slide direction="down" in={!trigger}>
+      {children}
+    </Slide>
+  );
+}
 
 const Layout: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();

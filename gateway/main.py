@@ -14,7 +14,7 @@ app = FastAPI(title="Rentora API Gateway")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,8 +72,9 @@ async def reverse_proxy(request: Request, upstream_url: str, prefix_to_strip: st
         resp_headers = dict(response.headers)
         resp_headers.pop("transfer-encoding", None)
         resp_headers.pop("content-length", None)
-
-        origin = request.headers.get("origin", "*")
+        
+        # Consistent CORS handling at the Gateway level
+        origin = request.headers.get("origin", "http://localhost:5173")
         resp_headers["Access-Control-Allow-Origin"] = origin
         resp_headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         resp_headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, Accept"
