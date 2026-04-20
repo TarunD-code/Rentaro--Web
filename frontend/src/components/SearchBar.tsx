@@ -83,7 +83,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <Box className="search-bar-wrapper" sx={{ flex: 4, position: 'relative' }} ref={inputRef}>
+    <Box className="search-bar-wrapper" sx={{ flex: 4, position: 'relative', zIndex: 1000 }} ref={inputRef}>
       <TextField 
         placeholder="Search locations, building names..."
         value={value}
@@ -107,12 +107,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <Portal id="search-suggestions-portal-root">
           <Paper 
             className="search-suggestions-portal"
-            elevation={8}
+            elevation={12}
             sx={{ 
               position: 'absolute', 
               top: rect.bottom + window.scrollY + 8, 
               left: rect.left + window.scrollX, 
               width: rect.width,
+              zIndex: 1100,
+              pointerEvents: 'auto',
+              maxHeight: '400px',
+              overflowY: 'auto',
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
             }}
           >
             {suggestions.map((s, i) => (

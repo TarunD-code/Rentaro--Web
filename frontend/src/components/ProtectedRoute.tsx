@@ -16,10 +16,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
-    // Redirect to a default authorized page if the role is not allowed
-    // For example, redirect to their own dashboard or home
-    return <Navigate to="/" replace />;
+  if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
+    // Redirect to login if role is missing or not allowed, to avoid infinite loops with "/"
+    localStorage.clear();
+    return <Navigate to="/login" replace />;
   }
 
   return children;

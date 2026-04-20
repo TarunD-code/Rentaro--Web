@@ -21,7 +21,9 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+    // You could send this to an error reporting service here (e.g. Sentry)
   }
 
   public render() {
@@ -82,7 +84,7 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.children;
+    return this.props.children;
   }
 }
 

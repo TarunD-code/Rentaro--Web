@@ -50,7 +50,8 @@ const MapView: React.FC<MapViewProps> = ({ center, zoom, properties, pois, favor
         border: '1px solid',
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        position: 'relative'
+        position: 'relative',
+        zIndex: 0
       }}
     >
       <MapContainer 

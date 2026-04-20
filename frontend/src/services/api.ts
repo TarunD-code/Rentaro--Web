@@ -31,7 +31,9 @@ export const apiFetch = async (endpoint: string, options: RequestOptions = {}) =
       console.warn('Unauthorized request. Clearing session.');
       localStorage.clear();
       window.dispatchEvent(new Event('auth-logout'));
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
       return null;
     }
 

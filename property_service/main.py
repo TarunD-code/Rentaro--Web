@@ -149,10 +149,6 @@ def list_properties(
 
     results = []
     for prop in properties[:limit]:
-    
-    # Manually map to handle MediaItem field mismatches (url vs raw_url, etc.)
-    results = []
-    for prop in properties:
         # Create media items list
         media_items = []
         for m in prop.media:

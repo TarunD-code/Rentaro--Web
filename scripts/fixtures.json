@@ -1,0 +1,37 @@
+{
+  "users": [
+    { "role": "admin", "email": "admin@rentora.com", "full_name": "Admin User", "is_kyc_verified": true },
+    { "role": "owner", "email": "owner@rentora.com", "full_name": "Jane Owner", "is_kyc_verified": true },
+    { "role": "tenant", "email": "tenant@rentora.com", "full_name": "John Tenant", "is_kyc_verified": false }
+  ],
+  "properties": [
+    {
+      "title": "Modern 2BHK in Electronic City",
+      "address": "Plot 42, Phase 1, Electronic City, Bengaluru",
+      "rent": 25000,
+      "deposit": 100000,
+      "geo": { "lat": 12.8399, "lng": 77.6770 },
+      "amenities": ["Gym", "Pool", "Power Backup"]
+    },
+    {
+      "title": "Luxury Villa near BTM Layout",
+      "address": "7th Main, 2nd Stage, BTM Layout, Bengaluru",
+      "rent": 65000,
+      "deposit": 300000,
+      "geo": { "lat": 12.9166, "lng": 77.6101 },
+      "amenities": ["Garden", "Parking", "Security"]
+    },
+    {
+      "title": "Studio Apartment Indiranagar",
+      "address": "12th Main, HAL 2nd Stage, Indiranagar, Bengaluru",
+      "rent": 18000,
+      "deposit": 50000,
+      "geo": { "lat": 12.9719, "lng": 77.6412 },
+      "amenities": ["Lift", "AC"]
+    }
+  ],
+  "notifications": [
+    { "user": "tenant@rentora.com", "title": "Rent Reminder", "content": "Your rent for May 2026 is due soon." },
+    { "user": "owner@rentora.com", "title": "New Application", "content": "John Tenant has applied for your property." }
+  ]
+}

@@ -75,8 +75,9 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const TenantDashboard = lazy(() => import('./pages/tenant/TenantDashboard'));
 
 const App: React.FC = () => {
-    const isAuthenticated = !!localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
+    const isAuthenticated = !!token && !!role;
 
     React.useEffect(() => {
         const handleAuthLogout = () => {

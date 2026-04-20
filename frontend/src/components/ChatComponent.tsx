@@ -53,29 +53,41 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ currentUser, receiverId }
     fetchHistory();
 
     // 2. Setup Socket
-    const newSocket = io('http://localhost:8007', {
-      auth: { token: localStorage.getItem('token') }
-    });
-
-    newSocket.emit('join_room', conversation_id);
-
-    newSocket.on('receive_message', (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
-    });
-
-    newSocket.on('user_typing', (data) => {
-      if (data.user !== currentUser.email_or_phone) {
-        setOtherUserTyping(true);
-        setTimeout(() => setOtherUserTyping(false), 3000);
+    let newSocket: Socket | null = null;
+    try {
+      if (!currentUser?.email_or_phone) {
+          console.warn("Chat session skipped: User context missing");
+          return;
       }
-    });
 
-    setSocket(newSocket);
+      newSocket = io('http://localhost:8007', {
+        auth: { token: localStorage.getItem('token') },
+        transports: ['websocket', 'polling'],
+        reconnection: true
+      });
+
+      newSocket.on('connect_error', (err) => {
+        console.error("Socket Connection Error:", err.message);
+      });
+
+      newSocket.emit('join_room', conversation_id);
+
+      newSocket.on('user_typing', (data) => {
+        if (data.user !== currentUser.email_or_phone) {
+          setOtherUserTyping(true);
+          setTimeout(() => setOtherUserTyping(false), 3000);
+        }
+      });
+
+      setSocket(newSocket);
+    } catch (err) {
+      console.error("Socket Initialization Failed:", err);
+    }
 
     return () => {
-      newSocket.disconnect();
+      newSocket?.disconnect();
     };
-  }, [conversation_id, currentUser.email_or_phone]);
+  }, [conversation_id, currentUser?.email_or_phone]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

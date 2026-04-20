@@ -33,6 +33,7 @@ BILLING_SERVICE_URL = "http://127.0.0.1:8009"
 OWNER_DASHBOARD_SERVICE_URL = "http://127.0.0.1:8010"
 SUBSCRIPTION_SERVICE_URL = "http://127.0.0.1:8011"
 SUPPORT_SERVICE_URL = "http://127.0.0.1:8012"
+AGREEMENTS_SERVICE_URL = "http://127.0.0.1:8008"
 
 # Reusable async HTTP client (avoids connection leak)
 http_client = httpx.AsyncClient(timeout=10.0)
@@ -162,6 +163,8 @@ async def gateway_router(request: Request, path: str):
         return await reverse_proxy(request, SUBSCRIPTION_SERVICE_URL, prefix_to_strip="subscriptions")
     elif path.startswith("support"):
         return await reverse_proxy(request, SUPPORT_SERVICE_URL, prefix_to_strip="support")
+    elif path.startswith("agreements"):
+        return await reverse_proxy(request, AGREEMENTS_SERVICE_URL, prefix_to_strip="agreements")
     
     return StreamingResponse(
         iter([b'{"detail": "Route not found"}']),
