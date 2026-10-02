@@ -1,22 +1,13 @@
-import os
-import shutil
 import uuid
-
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+import shared_storage
 
 class S3StubStorage:
     @staticmethod
     def upload_file(file_obj, filename: str) -> str:
         """
-        Simulates uploading to S3 by saving to a local directory and returning a mock URL.
+        Uploads a file to centralized object storage or local simulation under the profiles prefix.
         """
-        unique_filename = f"{uuid.uuid4()}_{filename}"
-        file_path = os.path.join(UPLOAD_DIR, unique_filename)
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file_obj, buffer)
-            
-        # Mock S3 URL
-        mock_s3_url = f"https://mock-s3-rentora.amazon.com/bucket/{unique_filename}"
-        return mock_s3_url
+        unique_filename = f"profiles/{uuid.uuid4()}_{filename}"
+        public_url = shared_storage.upload_file(file_obj, unique_filename)
+        return public_url
+

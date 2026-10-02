@@ -16,14 +16,16 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  CircularProgress
+  CircularProgress,
+  ListItemButton
 } from '@mui/material';
 import { 
   Star, 
   CheckCircle, 
   FlashOn, 
   WorkspacePremium,
-  AccountBalanceWallet
+  AccountBalanceWallet,
+  Home
 } from '@mui/icons-material';
 
 const FeaturedListings: React.FC = () => {
@@ -113,7 +115,7 @@ const FeaturedListings: React.FC = () => {
 
             <Grid container spacing={4} justifyContent="center">
                 {products.map((product) => (
-                    <Grid item xs={12} md={4} key={product.id}>
+                    <Grid size={{ xs: 12, md: 4 }} key={product.id}>
                         <Card sx={{ 
                             height: '100%', 
                             display: 'flex', 
@@ -174,9 +176,8 @@ const FeaturedListings: React.FC = () => {
                 <DialogContent sx={{ p: 0 }}>
                     <List sx={{ pt: 0 }}>
                         {properties.map((prop) => (
-                            <ListItem 
+                            <ListItemButton 
                                 key={prop.id} 
-                                button 
                                 onClick={() => handlePurchase(prop.id)}
                                 disabled={purchasing}
                                 sx={{ px: 3, py: 2 }}
@@ -189,7 +190,7 @@ const FeaturedListings: React.FC = () => {
                                     secondary={prop.address} 
                                 />
                                 {purchasing ? <CircularProgress size={20} /> : <AccountBalanceWallet />}
-                            </ListItem>
+                            </ListItemButton>
                         ))}
                         {properties.length === 0 && (
                             <Box p={4} textAlign="center">

@@ -12,11 +12,12 @@ class Property(Base):
     description = Column(String, nullable=True)
     address = Column(String, nullable=False) # Full address
     property_type = Column(String, default="Apartment")
+    area = Column(String, nullable=True)
     city = Column(String, nullable=True)
     state = Column(String, nullable=True)
     country = Column(String, default="India")
-    lat = Column(Float, nullable=True)
-    lng = Column(Float, nullable=True)
+    lat = Column(Float, nullable=True, index=True)
+    lng = Column(Float, nullable=True, index=True)
     price = Column(Float, nullable=False)
     currency = Column(String, default="INR")
     amenities = Column(String, nullable=True) # Stored as comma separated string for MVP

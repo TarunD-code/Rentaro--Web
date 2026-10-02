@@ -15,7 +15,10 @@ import {
   MenuItem,
   Avatar,
   Tooltip,
-  alpha
+  alpha,
+  Paper,
+  BottomNavigation,
+  BottomNavigationAction
 } from '@mui/material';
 import { 
   AccountCircle, 
@@ -78,11 +81,17 @@ const Layout: React.FC<Props> = ({ children }) => {
   };
 
   const isAuthPage = ['/login', '/register', '/verify'].includes(location.pathname);
-
   const [role, setRole] = useState<string | null>(localStorage.getItem('role'));
 
+  const navItems = [
+    { label: t('dashboard'), icon: <MenuIcon />, path: role === 'owner' ? '/owner/dashboard' : '/dashboard' },
+    { label: t('browse_listings'), icon: <Language />, path: '/listings' },
+    { label: t('profile'), icon: <AccountCircle />, path: '/profile' }
+  ];
+
   React.useEffect(() => {
-    setRole(localStorage.getItem('role'));
+    const currentRole = localStorage.getItem('role');
+    setRole(currentRole);
   }, [location.pathname]);
 
   return (

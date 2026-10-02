@@ -12,23 +12,18 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Chip,
   CircularProgress,
   Stack
 } from '@mui/material';
 import { 
   CheckCircle, 
-  WorkspacePremium, 
   SupportAgent, 
-  LocationOn,
   VerifiedUser,
   NavigateNext
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 
 const SubscriptionLanding: React.FC = () => {
     const theme = useTheme();
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [subscription, setSubscription] = useState<any>(null);
     const [purchasing, setPurchasing] = useState(false);
@@ -96,7 +91,7 @@ const SubscriptionLanding: React.FC = () => {
 
             <Grid container spacing={4} justifyContent="center" mb={10}>
                 {/* Standard Plan */}
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     <Card variant="outlined" sx={{ height: '100%', borderRadius: 6, p: 2 }}>
                         <CardContent>
                             <Typography variant="h5" fontWeight={800}>Standard</Typography>
@@ -125,7 +120,7 @@ const SubscriptionLanding: React.FC = () => {
                 </Grid>
 
                 {/* Premium Plan */}
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     <Card sx={{ 
                         height: '100%', 
                         borderRadius: 6, 
@@ -180,7 +175,7 @@ const SubscriptionLanding: React.FC = () => {
             {/* Premium Features Breakdown */}
             <Typography variant="h4" fontWeight={900} textAlign="center" mb={6}>Benefits of Premium</Typography>
             <Grid container spacing={4}>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={2} alignItems="center" textAlign="center">
                         <Box sx={{ p: 2, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 4 }}>
                             <SupportAgent color="info" fontSize="large" />
@@ -189,7 +184,7 @@ const SubscriptionLanding: React.FC = () => {
                         <Typography color="text.secondary">Jump the queue with dedicated support agents available 24/7 for VIP tenants.</Typography>
                     </Stack>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={2} alignItems="center" textAlign="center">
                         <Box sx={{ p: 2, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 4 }}>
                             <VerifiedUser color="success" fontSize="large" />
@@ -198,7 +193,7 @@ const SubscriptionLanding: React.FC = () => {
                         <Typography color="text.secondary">Access properties that have been physically inspected and owner-verified by Rentora.</Typography>
                     </Stack>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={2} alignItems="center" textAlign="center">
                         <Box sx={{ p: 2, bgcolor: alpha(theme.palette.warning.main, 0.1), borderRadius: 4 }}>
                             <NavigateNext color="warning" fontSize="large" />

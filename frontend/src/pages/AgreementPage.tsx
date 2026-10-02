@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Button, Chip, CircularProgress,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -15,6 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const AgreementPage: React.FC = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [agreements, setAgreements] = useState<any[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -32,7 +34,14 @@ const AgreementPage: React.FC = () => {
   const token = localStorage.getItem('token');
   const email = localStorage.getItem('email') || '';
 
-  useEffect(() => { fetchAgreements(); }, []);
+  useEffect(() => {
+    const role = localStorage.getItem('role');
+    if (role === 'admin' || role === 'ADMIN') {
+      navigate('/admin/dashboard');
+      return;
+    }
+    fetchAgreements();
+  }, []);
 
   const fetchAgreements = async () => {
     try {

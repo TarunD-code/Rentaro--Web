@@ -8,13 +8,26 @@ import asyncio
 from . import models, schemas, database
 from .storage import S3StubStorage
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Sharing the same secret key as auth service for verification
 SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"  
 ALGORITHM = "HS256"
 
 # App Setup
-models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Rentora Profile Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 def get_current_user_id(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):

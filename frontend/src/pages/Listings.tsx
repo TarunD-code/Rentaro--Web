@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { 
+import React, { useState, useEffect } from 'react';import { 
   Box, 
   Typography, 
   Grid, 
   TextField, 
-  InputAdornment, 
   Button, 
   ToggleButton, 
   ToggleButtonGroup,
@@ -29,7 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useSearchParams } from 'react-router-dom';
 import PropertyCard from '../components/PropertyCard';
-import MapPopupCard from '../components/MapPopupCard';
+// MapPopupCard available for future map popup integration
 import { PropertyGridSkeleton } from '../components/SkeletonLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -48,13 +46,13 @@ const Listings: React.FC = () => {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
-  const [distance, setDistance] = useState(5);
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [petFriendly, setPetFriendly] = useState(false);
-  const [furnished, setFurnished] = useState(false);
+  const [distance, _setDistance] = useState(5);
+  const [_verifiedOnly, _setVerifiedOnly] = useState(false);
+  const [_petFriendly, _setPetFriendly] = useState(false);
+  const [_furnished, _setFurnished] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<number[]>([0, 200000]);
+  const [priceRange, setPriceRange] = useState<number[]>([0, 600000]);
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [otherAmenity, setOtherAmenity] = useState('');
@@ -62,8 +60,52 @@ const Listings: React.FC = () => {
   const [isFurnished, setIsFurnished] = useState(false);
   const [isPetFriendly, setIsPetFriendly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([19.0760, 72.8777]);
-  const [mapZoom, setMapZoom] = useState(11);
+  const [rankingProfile, setRankingProfile] = useState<string>('default');
+  const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]); // Default: Bengaluru
+  const [mapZoom, setMapZoom] = useState(12);
+
+  // Debounced bounding-box fetch — fires when map stops moving.
+  // Replaces the centre-based radius search with a true viewport query so only
+  // pins visible on screen are loaded (no off-screen network waste).
+  const boundsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleBoundsChange = React.useCallback(
+    (bounds: { minLat: number; minLng: number; maxLat: number; maxLng: number }) => {
+      // Debounce: wait 400 ms after the last moveend before firing the request
+      if (boundsTimerRef.current) clearTimeout(boundsTimerRef.current);
+      boundsTimerRef.current = setTimeout(async () => {
+        try {
+          const { minLat, minLng, maxLat, maxLng } = bounds;
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL}/search/properties`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                min_lat: minLat, min_lng: minLng,
+                max_lat: maxLat, max_lng: maxLng,
+                min_price: priceRange[0],
+                max_price: priceRange[1],
+                ...(propertyTypes.length ? { property_type: propertyTypes[0] } : {}),
+                ...(isFurnished ? { furnished: true } : {}),
+                ...(isPetFriendly ? { pet_friendly: true } : {}),
+                ranking_profile: rankingProfile,
+                page: 1,
+                page_size: 100,
+              }),
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setProperties(data.results || []);
+          }
+        } catch (err) {
+          console.error('[MapView] Viewport fetch error:', err);
+        }
+      }, 400);
+    },
+    [priceRange, propertyTypes, isFurnished, isPetFriendly, rankingProfile]
+  );
 
   useEffect(() => {
     const lat = searchParams.get('lat');
@@ -102,23 +144,39 @@ const Listings: React.FC = () => {
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (searchQuery) params.append('q', searchQuery);
-      params.append('min_price', priceRange[0].toString());
-      params.append('max_price', priceRange[1].toString());
-      if (propertyTypes.length) params.append('property_type', propertyTypes.join(','));
-      if (selectedAmenities.length || otherAmenity) {
-        const allAm = [...selectedAmenities];
-        if (otherAmenity) allAm.push(otherAmenity);
-        params.append('amenities', allAm.join(','));
+      let currentCenter = mapCenter;
+      if (searchQuery && searchQuery.toLowerCase().includes('bangalore')) {
+        currentCenter = [12.9716, 77.5946];
+        setMapCenter(currentCenter);
+        setMapZoom(13);
+        fetchPois(12.9716, 77.5946);
       }
-      if (availableFrom) params.append('available_from', availableFrom);
-      if (isFurnished) params.append('furnished', 'true');
-      if (isPetFriendly) params.append('pet_friendly', 'true');
+      const payload: any = {
+        min_price: priceRange[0],
+        max_price: priceRange[1],
+        ranking_profile: rankingProfile,
+        page: 1,
+        page_size: 50
+      };
+      if (searchQuery) payload.q = searchQuery;
+      if (propertyTypes.length) payload.property_type = propertyTypes[0];
+      if (isFurnished) payload.furnished = true;
+      if (isPetFriendly) payload.pet_friendly = true;
+      if (viewMode === 'map' && currentCenter) {
+        payload.near_lat = currentCenter[0];
+        payload.near_lng = currentCenter[1];
+        payload.radius_km = distance;
+      }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/property/?${params.toString()}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/search/properties`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       const data = await response.json();
-      if (response.ok) setProperties(data);
+      if (response.ok) {
+        setProperties(data.results || []);
+      }
     } catch (err) {
       console.error('Fetch Error:', err);
     } finally {
@@ -146,9 +204,9 @@ const Listings: React.FC = () => {
       return;
     }
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/property/search/suggestions?q=${q}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/search/autocomplete?q=${q}`);
       const data = await response.json();
-      if (response.ok) setSuggestions(data);
+      if (response.ok) setSuggestions(data.suggestions || []);
     } catch (err) {
       console.error('Suggestions Error:', err);
     }
@@ -194,8 +252,8 @@ const Listings: React.FC = () => {
   };
 
   const filteredProperties = properties.filter(p => 
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.address.toLowerCase().includes(searchQuery.toLowerCase())
+    (p?.title || '').toLowerCase().includes((searchQuery || '').toLowerCase()) || 
+    (p?.address || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   return (
@@ -251,12 +309,17 @@ const Listings: React.FC = () => {
             onChange={setSearchQuery}
             onSearch={fetchProperties}
             suggestions={suggestions}
-            onSuggestionSelect={(s) => {
-              setSearchQuery(s.name);
+            onSuggestionSelect={(s: any) => {
+              const nameStr = s.term || s.name || '';
+              setSearchQuery(nameStr);
               setSuggestions([]);
-              if (s.lat && s.lon) {
-                const lat = parseFloat(s.lat);
-                const lon = parseFloat(s.lon);
+              if (s.lat && s.lng) {
+                let lat = parseFloat(s.lat);
+                let lon = parseFloat(s.lng);
+                if (nameStr.toLowerCase().includes('bangalore')) {
+                  lat = 12.9716;
+                  lon = 77.5946;
+                }
                 setMapCenter([lat, lon]);
                 setMapZoom(16);
                 if (viewMode === 'map') fetchPois(lat, lon);
@@ -288,7 +351,7 @@ const Listings: React.FC = () => {
                   onChange={(_, newValue) => setPriceRange(newValue as number[])}
                   valueLabelDisplay="auto"
                   min={0}
-                  max={200000}
+                  max={600000}
                   step={5000}
                   sx={{ mx: 1, width: 'calc(100% - 16px)' }}
                 />
@@ -355,14 +418,33 @@ const Listings: React.FC = () => {
                 />
               </Box>
 
+              {/* Ranking Profile Selector */}
+              <Box width="100%" mt={2}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={1}>
+                  Intelligent Ranking Profile
+                </Typography>
+                <Select
+                  size="small"
+                  value={rankingProfile}
+                  onChange={(e) => setRankingProfile(e.target.value)}
+                  sx={{ width: 250, bgcolor: 'background.paper' }}
+                >
+                  <MenuItem value="default">Default Relevance</MenuItem>
+                  <MenuItem value="family">Family Friendly</MenuItem>
+                  <MenuItem value="student">Student / Budget</MenuItem>
+                  <MenuItem value="it_professional">IT Professional (Commute Focus)</MenuItem>
+                  <MenuItem value="luxury">Luxury / Premium</MenuItem>
+                </Select>
+              </Box>
+
               {/* Action Buttons */}
               <Box width="100%" display="flex" gap={2} mt={1}>
                 <Button variant="contained" onClick={fetchProperties} sx={{ borderRadius: 3, px: 4 }}>Apply Filters</Button>
                 <Button 
                   onClick={() => { 
-                    setPriceRange([0, 200000]); setPropertyTypes([]); setSelectedAmenities([]); 
+                    setPriceRange([0, 600000]); setPropertyTypes([]); setSelectedAmenities([]); 
                     setOtherAmenity(''); setAvailableFrom(''); setIsFurnished(false); setIsPetFriendly(false); 
-                    setSearchQuery(''); fetchProperties(); 
+                    setSearchQuery(''); setRankingProfile('default'); fetchProperties(); 
                   }}
                   sx={{ borderRadius: 3 }}
                 >
@@ -394,6 +476,41 @@ const Listings: React.FC = () => {
              />
           ))}
         </Box>
+
+        {/* Bengaluru micro-market quick-jump chips — only shown in map view */}
+        {viewMode === 'map' && (
+          <Box>
+            <Typography variant="body2" sx={{ mr: 1, mb: 1, fontWeight: 600, display: 'inline' }}>
+              Jump to:
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap" mt={0.5}>
+              {[
+                { label: 'HSR Layout',      lng: 77.6412, lat: 12.9121 },
+                { label: 'Koramangala',     lng: 77.6271, lat: 12.9352 },
+                { label: 'Indiranagar',     lng: 77.6413, lat: 12.9784 },
+                { label: 'Whitefield',      lng: 77.7499, lat: 12.9698 },
+                { label: 'Electronic City', lng: 77.6762, lat: 12.8399 },
+                { label: 'Hebbal',          lng: 77.5970, lat: 13.0358 },
+              ].map((nb) => (
+                <Chip
+                  key={nb.label}
+                  label={nb.label}
+                  size="small"
+                  variant="outlined"
+                  clickable
+                  color="primary"
+                  sx={{ borderRadius: 6, fontWeight: 600 }}
+                  onClick={() => {
+                    // Update center — MapView.flyTo fires via the center useEffect,
+                    // then moveend triggers handleBoundsChange to fetch viewport properties.
+                    setMapCenter([nb.lat, nb.lng]);
+                    setMapZoom(14);
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
       </Paper>
 
       {/* Content Area */}
@@ -433,6 +550,7 @@ const Listings: React.FC = () => {
           pois={pois}
           favorites={favorites}
           onLike={handleToggleFavorite}
+          onBoundsChange={handleBoundsChange}
         />
       )}
     </Box>

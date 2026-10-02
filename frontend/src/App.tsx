@@ -7,11 +7,9 @@ import { Box, CircularProgress, Typography, alpha, useTheme } from '@mui/materia
 const Register = lazy(() => import('./pages/Register'));
 const Login = lazy(() => import('./pages/Login'));
 const VerifyOTP = lazy(() => import('./pages/VerifyOTP'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Profile = lazy(() => import('./pages/Profile'));
 const CreateProperty = lazy(() => import('./pages/CreateProperty'));
 const Listings = lazy(() => import('./pages/Listings'));
-const Home = lazy(() => import('./pages/Home'));
 const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
 const AgreementWorkflow = lazy(() => import('./pages/AgreementWorkflow'));
 const DepositPayment = lazy(() => import('./pages/DepositPayment'));
@@ -34,8 +32,10 @@ const OwnerPremiumDashboard = lazy(() => import('./pages/owner/OwnerDashboard'))
 const FeaturedListings = lazy(() => import('./pages/owner/FeaturedListings'));
 const ReportCenter = lazy(() => import('./pages/owner/ReportCenter'));
 const SubscriptionLanding = lazy(() => import('./pages/tenant/SubscriptionLanding'));
+const AgreementBuilder = lazy(() => import('./pages/AgreementBuilder'));
+const KYCVerificationFlow = lazy(() => import('./pages/KYCVerificationFlow'));
 
-import { isFeatureEnabled } from './config/featureFlags';
+
 
 
 const LoadingScreen = () => {
@@ -110,6 +110,7 @@ const App: React.FC = () => {
               <Route path="/listings/:id" element={<PropertyDetail />} />
               <Route path="/listings" element={<Listings />} />
               <Route path="/agreements/:id" element={<ProtectedRoute><AgreementWorkflow /></ProtectedRoute>} />
+              <Route path="/agreements/new" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><AgreementBuilder /></ProtectedRoute>} />
               <Route path="/payments/deposit/:agreementId" element={<ProtectedRoute><DepositPayment /></ProtectedRoute>} />
               <Route path="/payments/autopay" element={<ProtectedRoute><AutoPaySetup /></ProtectedRoute>} />
               <Route path="/payments/history" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
@@ -122,6 +123,7 @@ const App: React.FC = () => {
               <Route path="/maintenance/history" element={<ProtectedRoute><MaintenanceHistory /></ProtectedRoute>} />
               <Route path="/onboarding/form" element={<ProtectedRoute><OnboardingForm /></ProtectedRoute>} />
               <Route path="/onboarding/agreements" element={<ProtectedRoute><AgreementPage /></ProtectedRoute>} />
+              <Route path="/kyc" element={<ProtectedRoute><KYCVerificationFlow /></ProtectedRoute>} />
               <Route path="/payouts" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><OwnerPayoutDashboard /></ProtectedRoute>} />
               <Route path="/statements" element={<ProtectedRoute><StatementsPage /></ProtectedRoute>} />
               <Route path="/reconciliation" element={<ProtectedRoute allowedRoles={['admin']}><ReconciliationAdmin /></ProtectedRoute>} />

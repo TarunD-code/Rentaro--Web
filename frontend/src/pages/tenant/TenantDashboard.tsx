@@ -2,13 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { motion } from 'framer-motion';
 import TenantDashboard from '../../components/dashboards/TenantDashboard';
-
-const TenantDashboardPage: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [agreements, setAgreements] = useState<any[]>([]);
-  const [metrics, setMetrics] = useState<any>(null);
-
 import { api } from '../../services/api';
 
 const TenantDashboardPage: React.FC = () => {

@@ -5,14 +5,17 @@ import './styles/global.css';
 import App from './App.tsx';
 import { ThemeContextProvider } from './context/ThemeContext';
 import { HelmetProvider } from 'react-helmet-async';
+import ErrorBoundary from './components/ErrorBoundary';
 import './i18n';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HelmetProvider>
-      <ThemeContextProvider>
-        <App />
-      </ThemeContextProvider>
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <ThemeContextProvider>
+          <App />
+        </ThemeContextProvider>
+      </HelmetProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -22,12 +22,14 @@ import { useNavigate } from 'react-router-dom';
 
 interface Property {
   id: string;
-  title: string;
-  price: string | number;
-  address: string;
-  amenities: string | string[];
+  title?: string;
+  price?: string | number;
+  address?: string;
+  amenities?: string | string[];
+  images?: string[];
   thumbnail_url?: string;
   rating?: number;
+  is_featured?: boolean;
 }
 
 interface PropertyCardProps {
@@ -43,17 +45,24 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const amenitiesList = Array.isArray(property.amenities) 
+  
+  const amenitiesList = Array.isArray(property?.amenities) 
     ? property.amenities 
-    : property.amenities.split(',').map(a => a.trim()).filter(a => a);
+    : (property?.amenities || '').split(',').map(a => a.trim()).filter(a => a);
 
-  const priceFormatted = typeof property.price === 'number' 
+  const priceFormatted = typeof property?.price === 'number' 
     ? property.price.toLocaleString('en-IN') 
-    : property.price;
+    : (property?.price || '0');
 
-  const imageUrl = property.thumbnail_url 
-    ? `${import.meta.env.VITE_API_URL}${property.thumbnail_url}`
-    : null;
+  // Standardize image selection (prefer images array, fallback to thumbnail_url, then placeholder)
+  const fallbackUrl = "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80";
+  const rawImage = property?.images && property.images.length > 0 
+    ? property.images[0] 
+    : property?.thumbnail_url;
+    
+  const imageUrl = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `${import.meta.env.VITE_API_URL}${rawImage}`)
+    : fallbackUrl;
 
   return (
     <motion.div
@@ -80,6 +89,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               height="220"
               image={imageUrl}
               alt={property.title}
+              onError={(e) => {
+                e.currentTarget.src = fallbackUrl;
+              }}
               sx={{ 
                 transition: 'transform 0.5s ease',
                 '&:hover': { transform: 'scale(1.1)' }
@@ -124,6 +136,28 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             </Typography>
           </Box>
 
+          {property.is_featured && (
+            <Box 
+              sx={{ 
+                position: 'absolute', 
+                top: 12, 
+                left: 70, 
+                zIndex: 1,
+                background: 'linear-gradient(45deg, #FFD700, #FFA500)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                color: '#000',
+                display: 'flex',
+                alignItems: 'center',
+                boxShadow: '0 4px 14px rgba(255, 215, 0, 0.4)'
+              }}
+            >
+              <Typography variant="caption" fontWeight="900" sx={{ letterSpacing: 0.5 }}>
+                FEATURED
+              </Typography>
+            </Box>
+          )}
+
           <IconButton 
             onClick={(e) => { e.stopPropagation(); onLike && onLike(); }}
             sx={{ 
@@ -166,7 +200,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               color: theme.palette.text.primary
             }}
           >
-            {property.title}
+            {property?.title || "Untitled Property"}
           </Typography>
 
           <Box display="flex" alignItems="center" gap={0.5} mb={2}>
@@ -177,7 +211,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
               noWrap
               sx={{ opacity: 0.8 }}
             >
-              {property.address}
+              {property?.address || "Unknown Location"}
             </Typography>
           </Box>
 

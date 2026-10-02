@@ -15,8 +15,11 @@ logger = logging.getLogger("subscription_service")
 SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"
 ALGORITHM = "HS256"
 
-models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Rentora Subscription Service", version="1.0.0")
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 def get_current_user_info(authorization: str = Header(None)):

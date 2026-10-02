@@ -2,19 +2,26 @@
 Rentora Onboarding Service — Database Configuration
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import MetaData
+from sqlalchemy.orm import declarative_base
+import shared_database
 
-DATABASE_URL = "sqlite:///./rentora_onboarding.db"
+# Centralized Postgres Schema Isolation
+schema_metadata = MetaData(schema="onboarding")
+Base = declarative_base(metadata=schema_metadata)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
+engine = shared_database.sync_engine
+SessionLocal = shared_database.SyncSessionLocal
 
 def get_db():
+    if not SessionLocal:
+        raise RuntimeError("PostgreSQL Sync SessionLocal is not initialized")
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        db.rollback()
+        raise e
     finally:
         db.close()
+

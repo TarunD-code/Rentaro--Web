@@ -74,32 +74,19 @@ class MapTilerProvider(LocationProvider):
         return self._mock_pois(lat, lng)
 
     async def get_route(self, start_coords: Tuple[float, float], end_coords: Tuple[float, float], mode: str = "transit") -> Dict[str, Any]:
-        """ Calculate routing from start to end  """
-        if MAPTILER_KEY == "mock_key":
-            # Just rough euclidean for mock
-            lat_diff = end_coords[0] - start_coords[0]
-            lng_diff = end_coords[1] - start_coords[1]
-            dist_km = math.sqrt(lat_diff*lat_diff + lng_diff*lng_diff) * 111.0 # approx
-            return {
-                "distance": round(dist_km, 2),
-                "duration": round(dist_km * 12, 1), # 12 mins per km roughly
-                "mode": mode
-            }
-            
-        try:
-            async with httpx.AsyncClient() as client:
-               # MapTiler Routing API: driving, pedestrian, transit, bicycle
-               url = "https://api.maptiler.com/routes/"
-               resp = await client.get(f"{url}?route={start_coords[1]},{start_coords[0]};{end_coords[1]},{end_coords[0]}&key={MAPTILER_KEY}")
-               # Simplify parsing for prototype
-               return {
-                   "distance": 2.5,
-                   "duration": 15.0,
-                   "mode": mode
-               }
-        except Exception as e:
-            print(f"MapTiler Routing Error: {e}")
-            return {"distance": 0, "duration": 0, "mode": mode}
+        """ Calculate routing from start to end locally to avoid slow network lookups """
+        lat_diff = end_coords[0] - start_coords[0]
+        lng_diff = end_coords[1] - start_coords[1]
+        dist_km = math.sqrt(lat_diff*lat_diff + lng_diff*lng_diff) * 111.0 # approx
+        
+        # Walk speed: ~5 km/h (12 mins/km), driving: ~35 km/h (1.7 mins/km)
+        mins_per_km = 1.7 if mode == "driving" else (4.0 if mode == "cycling" else 12.0)
+        
+        return {
+            "distance": round(dist_km, 2),
+            "duration": max(1.0, round(dist_km * mins_per_km, 1)),
+            "mode": mode
+        }
 
              
     def _mock_pois(self, lat, lng):
@@ -108,7 +95,19 @@ class MapTilerProvider(LocationProvider):
             ("metro", "Metro Station Phase 1", 500, 1500),
             ("hospital", "City General Hospital", 1000, 2500),
             ("grocery", "Fresh Supermarket", 200, 800),
-            ("office", "Tech Park Sez", 1500, 4000)
+            ("office", "Tech Park Sez", 1500, 4000),
+            ("pharmacy", "Apollo Pharmacy", 100, 600),
+            ("bus_stop", "Main Road Bus Stop", 150, 800),
+            ("bus_depot", "Central Bus Depot", 800, 2000),
+            ("school", "St. Anne's High School", 400, 1200),
+            ("college", "National Institute of Science", 800, 2500),
+            ("playground", "Community Playground", 200, 900),
+            ("park", "Grand City Park", 300, 1500),
+            ("gym", "Gold Gym & Fitness", 250, 1000),
+            ("restaurant", "Spice Garden Restaurant", 150, 750),
+            ("cafe", "Starbucks Coffee House", 100, 500),
+            ("atm", "HDFC Bank ATM", 100, 400),
+            ("bank", "ICICI Bank Branch", 200, 800)
         ]
         results = []
         for cat, name_prefix, min_dist, max_dist in categories:

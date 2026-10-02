@@ -12,6 +12,9 @@ class TemplateRead(TemplateBase):
     class Config:
         from_attributes = True
 
+class TemplateCreate(TemplateBase):
+    pass
+
 class AgreementBase(BaseModel):
     owner_id: str
     tenant_id: str

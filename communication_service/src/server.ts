@@ -18,7 +18,31 @@ const io = new Server(httpServer, {
   }
 });
 
+import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
+
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+
+if (process.env.REDIS_HOST || process.env.REDIS_URL) {
+  console.log("Configuring Socket.io Redis Adapter...");
+  const pubClient = createClient({ url: REDIS_URL });
+  const subClient = pubClient.duplicate();
+
+  pubClient.on('error', (err: any) => console.warn('Redis pubClient error:', err.message || err));
+  subClient.on('error', (err: any) => console.warn('Redis subClient error:', err.message || err));
+
+  Promise.all([pubClient.connect(), subClient.connect()])
+    .then(() => {
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log("✅ Socket.io Redis Adapter bound successfully!");
+    })
+    .catch((err: any) => {
+      console.warn("⚠️ Failed to bind Redis Adapter, falling back to local memory adapter:", err.message || err);
+    });
+}
+
 const PORT = process.env.PORT || 8007;
+
 const SECRET_KEY = process.env.JWT_SECRET || "RENTORA_SUPER_SECRET_KEY";
 
 app.use(cors());
@@ -37,11 +61,20 @@ io.use((socket, next) => {
 });
 
 // REST Endpoints
-app.get('/messages/:conversationId', (req, res) => {
+app.get('/health', (req, res) => {
+  res.json({ status: "healthy" });
+});
+
+app.get('/messages/:conversationId', async (req, res) => {
   const { conversationId } = req.params;
   const { limit, offset } = req.query;
-  const history = getMessages(conversationId, Number(limit) || 50, Number(offset) || 0);
-  res.json(history);
+  try {
+    const history = await getMessages(conversationId, Number(limit) || 50, Number(offset) || 0);
+    res.json(history);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load messages" });
+  }
 });
 
 app.post('/calls/initiate', async (req, res) => {
@@ -60,7 +93,7 @@ io.on('connection', (socket) => {
     console.log(`User ${user.sub} joined room: ${room}`);
   });
 
-  socket.on('send_message', (data) => {
+  socket.on('send_message', async (data) => {
     const { receiver_id, conversation_id, content } = data;
     const message = {
       sender_id: user.sub,
@@ -71,11 +104,15 @@ io.on('connection', (socket) => {
       timestamp: new Date().toISOString()
     };
 
-    // Persist to DB
-    saveMessage(message);
-
-    // Broadcast to the room (both sender and receiver should be in it)
-    io.to(conversation_id).emit('receive_message', message);
+    try {
+      // Persist to Postgres DB asynchronously
+      await saveMessage(message);
+      
+      // Broadcast to the room (both sender and receiver should be in it)
+      io.to(conversation_id).emit('receive_message', message);
+    } catch (err) {
+      console.error("Failed to save socket message:", err);
+    }
   });
 
   socket.on('typing', (data) => {

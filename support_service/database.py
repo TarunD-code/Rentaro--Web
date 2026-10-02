@@ -1,19 +1,23 @@
-from sqlalchemy import create_engine
+from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import shared_database
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./rentora_support.db"
+# Centralized Postgres Schema Isolation
+schema_metadata = MetaData(schema="support")
+Base = declarative_base(metadata=schema_metadata)
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
+engine = shared_database.sync_engine
+SessionLocal = shared_database.SyncSessionLocal
 
 def get_db():
+    if not SessionLocal:
+        raise RuntimeError("PostgreSQL Sync SessionLocal is not initialized")
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        db.rollback()
+        raise e
     finally:
         db.close()
+

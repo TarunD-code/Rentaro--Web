@@ -6,10 +6,12 @@ import datetime
 # Database paths
 DB_CONFIG = {
     "auth": "rentora_auth.db",
-    "properties": "rentora_properties.db",
+    "properties": "rentora_properties_v2.db",
     "notifications": "rentora_notification.db",
     "profile": "rentora_profile.db"
 }
+
+import bcrypt
 
 FIXTURES_PATH = "scripts/fixtures.json"
 
@@ -20,9 +22,11 @@ def seed_auth_and_profile(auth_cur, prof_cur, users):
     
     for user in users:
         # Auth entry
+        # use bcrypt directly to avoid passlib version issues
+        hashed_password = bcrypt.hashpw("password123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         auth_cur.execute(
             "INSERT INTO users (email_or_phone, hashed_password, role, is_verified) VALUES (?, ?, ?, ?)",
-            (user["email"], "pbkdf2:sha256:260000$mock_hash", user["role"], 1)
+            (user["email"], hashed_password, user["role"], 1)
         )
         # Profile entry
         prof_cur.execute(

@@ -10,22 +10,22 @@ import {
   useTheme, 
   alpha,
   Divider,
-  Grid
+  Grid,
+  Chip
 } from '@mui/material';
 import { 
-  CheckCircle, 
-  FileText, 
-  ShieldCheck, 
+  Article as FileText, 
+  GppGood as ShieldCheck, 
   ArrowForward, 
   ArrowBack,
   Download
 } from '@mui/icons-material';
-import { DEFAULT_CLAUSES, AGREEMENT_TEMPLATES, Clause } from './AgreementTemplates';
+import { DEFAULT_CLAUSES, AGREEMENT_TEMPLATES } from './AgreementTemplates';
+import type { Clause } from './AgreementTemplates';
 
 const steps = ['Templates & Parties', 'Clause Library', 'Financials & Bond', 'Review & Generate'];
 
 import { 
-  FormControlLabel, 
   Checkbox, 
   TextField as MuiTextField,
   Slider,
@@ -49,7 +49,7 @@ const AgreementBuilder: React.FC = () => {
     deposit: 50000,
     bondWeightage: 50,
   });
-  const [parties, setParties] = useState({
+  const [parties] = useState({
     property: { address: 'Plot 42, Electronic City Phase 1, Bengaluru' },
     tenant: { full_name: 'John Doe', address: 'BTM Layout, Bengaluru' },
     owner: { full_name: 'Jane Smith', address: 'Indiranagar, Bengaluru' }

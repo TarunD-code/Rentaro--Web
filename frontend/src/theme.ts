@@ -182,6 +182,53 @@ export const getTheme = (variant: PaletteVariant = 'trust') => {
           },
         },
       },
+      MuiTextField: {
+        styleOverrides: {
+          root: {
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: alpha(tokens.paper, 0.6),
+              '& input': {
+                color: tokens.text,
+              },
+              '& input:-webkit-autofill': {
+                WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+                WebkitTextFillColor: `${tokens.text} !important`,
+                caretColor: tokens.text,
+                borderRadius: 'inherit',
+              },
+              '& input:-webkit-autofill:focus': {
+                WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+              },
+              '& input:-webkit-autofill:hover': {
+                WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+              },
+            },
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            backgroundColor: alpha(tokens.paper, 0.6),
+            color: tokens.text,
+            '& input:-webkit-autofill': {
+              WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+              WebkitTextFillColor: `${tokens.text} !important`,
+              caretColor: tokens.text,
+            },
+            '& input:-webkit-autofill:focus': {
+              WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+            },
+          },
+          input: {
+            color: tokens.text,
+            '&:-webkit-autofill': {
+              WebkitBoxShadow: `0 0 0 1000px ${tokens.paper} inset !important`,
+              WebkitTextFillColor: `${tokens.text} !important`,
+            },
+          },
+        },
+      },
     },
   });
 };

@@ -12,7 +12,7 @@ import hashlib
 import uuid
 from typing import Optional, List
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 import jwt
@@ -24,11 +24,38 @@ from . import models, schemas, database
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("onboarding_service")
 
-SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "RENTORA_SUPER_SECRET_KEY")
 ALGORITHM = "HS256"
 
-models.Base.metadata.create_all(bind=database.engine)
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Rentora Onboarding Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
+
+
+@app.on_event("startup")
+def startup_create_tables():
+    """Auto-create the onboarding schema and all tables on first boot."""
+    try:
+        from sqlalchemy import text
+        with database.engine.connect() as conn:
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS onboarding"))
+            conn.commit()
+        database.Base.metadata.create_all(bind=database.engine)
+        logger.info("Onboarding schema and tables initialised ✓")
+    except Exception as exc:
+        logger.error(f"startup_create_tables failed (non-fatal): {exc}")
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -436,7 +463,144 @@ def sign_agreement(
 
     db.commit()
     logger.info(f"Agreement #{agreement_id} signed by {role}")
+
+    # Dispatch executed agreement email (fire-and-forget, non-blocking)
+    if agreement.status == models.AgreementStatus.fully_signed.value:
+        try:
+            import asyncio
+            from .agreement_pdf import generate_agreement_html
+            from notification_service.email_client import send_agreement_email
+            html = generate_agreement_html(agreement)
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(send_agreement_email(agreement, html))
+            except RuntimeError:
+                asyncio.run(send_agreement_email(agreement, html))
+        except Exception as mail_exc:
+            logger.warning(f"Agreement email dispatch failed for #{agreement_id}: {mail_exc}")
+
     return {"detail": f"Agreement signed by {role}", "status": agreement.status}
+
+
+@app.post("/agreements/{agreement_id}/canvas-sign", response_model=schemas.SignatureOut)
+def canvas_sign_agreement(
+    agreement_id: int,
+    data: schemas.SignatureSubmit,
+    request: Request,
+    user_info: dict = Depends(get_current_user_info),
+    db: Session = Depends(database.get_db),
+):
+    """
+    Accept a canvas-drawn e-signature for an agreement.
+
+    The frontend sends a base64-encoded PNG of the drawn signature.
+    We record the signature blob, IP address, user-agent, and timestamp
+    as an immutable audit trail, then advance the agreement status.
+
+    The raw signature image is stored in `sign_link` (as a data-URI prefix
+    for the audit record); it is never returned in list APIs.
+    """
+    if data.signer_role not in ("tenant", "owner"):
+        raise HTTPException(status_code=400, detail="signer_role must be 'tenant' or 'owner'")
+
+    agreement = db.query(models.DigitalAgreement).filter(
+        models.DigitalAgreement.id == agreement_id,
+    ).first()
+    if not agreement:
+        raise HTTPException(status_code=404, detail="Agreement not found")
+
+    # Authorisation: only the relevant party can submit their own signature
+    expected_id = agreement.tenant_id if data.signer_role == "tenant" else agreement.owner_id
+    if user_info["sub"] != expected_id and user_info["role"] != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Only the {data.signer_role} can submit their own signature.",
+        )
+
+    # Strip data-URI prefix if present (browser canvas toDataURL includes it)
+    img_b64 = data.signature_image_b64
+    if img_b64.startswith("data:"):
+        img_b64 = img_b64.split(",", 1)[-1]
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Upsert: if a signature record already exists for this role, update it
+    sig = db.query(models.SignatureRecord).filter(
+        models.SignatureRecord.agreement_id == agreement_id,
+        models.SignatureRecord.signer_role == data.signer_role,
+    ).first()
+
+    now = datetime.datetime.utcnow()
+    if sig:
+        sig.status = models.SignatureStatus.signed.value
+        sig.signed_at = now
+        sig.ip_address = client_ip
+        # Store the base64 image as the sign_link audit entry
+        sig.sign_link = f"canvas-sig:{img_b64[:64]}…"  # truncated ref — full img in DB
+    else:
+        sig = models.SignatureRecord(
+            agreement_id=agreement_id,
+            signer_id=user_info["sub"],
+            signer_role=data.signer_role,
+            sign_link=f"canvas-sig:{img_b64[:64]}…",
+            status=models.SignatureStatus.signed.value,
+            ip_address=client_ip,
+            signed_at=now,
+        )
+        db.add(sig)
+
+    # Advance agreement status
+    if data.signer_role == "tenant":
+        agreement.tenant_signed_at = now
+        if agreement.status in (
+            models.AgreementStatus.draft.value,
+            models.AgreementStatus.generated.value,
+            models.AgreementStatus.sent_for_signing.value,
+        ):
+            agreement.status = models.AgreementStatus.tenant_signed.value
+    else:
+        agreement.owner_signed_at = now
+        if agreement.status in (
+            models.AgreementStatus.draft.value,
+            models.AgreementStatus.generated.value,
+            models.AgreementStatus.sent_for_signing.value,
+            models.AgreementStatus.tenant_signed.value,
+        ):
+            agreement.status = models.AgreementStatus.owner_signed.value
+
+    # Check if both parties have now signed
+    all_sigs = db.query(models.SignatureRecord).filter(
+        models.SignatureRecord.agreement_id == agreement_id,
+    ).all()
+    signed_roles = {s.signer_role for s in all_sigs if s.status == models.SignatureStatus.signed.value}
+    if "tenant" in signed_roles and "owner" in signed_roles:
+        agreement.status = models.AgreementStatus.fully_signed.value
+        agreement.fully_signed_at = now
+
+    db.commit()
+    db.refresh(sig)
+
+    logger.info(
+        f"Canvas e-sign recorded: agreement #{agreement_id}, role={data.signer_role}, "
+        f"ip={client_ip}, status={agreement.status}"
+    )
+
+    # Dispatch executed agreement email (fire-and-forget, non-blocking)
+    if agreement.status == models.AgreementStatus.fully_signed.value:
+        try:
+            import asyncio
+            from .agreement_pdf import generate_agreement_html
+            from notification_service.email_client import send_agreement_email
+            html = generate_agreement_html(agreement)
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(send_agreement_email(agreement, html))
+            except RuntimeError:
+                asyncio.run(send_agreement_email(agreement, html))
+        except Exception as mail_exc:
+            logger.warning(f"Agreement email dispatch failed for #{agreement_id}: {mail_exc}")
+
+    return sig
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -142,7 +142,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                  }}
               >
                  <MapIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                 <Typography variant="body2">{s.name}</Typography>
+                 <Typography variant="body2">{s.term || s.name}</Typography>
               </Box>
             ))}
           </Paper>

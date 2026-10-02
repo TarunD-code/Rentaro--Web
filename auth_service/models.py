@@ -9,3 +9,4 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String)  # "tenant" or "owner"
     is_verified = Column(Boolean, default=False)
+    otp_code = Column(String, nullable=True)

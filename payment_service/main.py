@@ -26,8 +26,21 @@ logger = logging.getLogger("payment_service")
 SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"
 ALGORITHM = "HS256"
 
-models.Base.metadata.create_all(bind=database.engine)
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Rentora Payment Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────

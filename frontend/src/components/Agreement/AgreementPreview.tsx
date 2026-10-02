@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Typography, Paper, Divider, Grid, alpha, useTheme } from '@mui/material';
-import { Clause } from './AgreementTemplates';
+import { Box, Typography, Paper, Divider, Grid } from '@mui/material';
+import type { Clause } from './AgreementTemplates';
 
 interface AgreementPreviewProps {
   clauses: Clause[];
@@ -21,7 +21,6 @@ const AgreementPreview: React.FC<AgreementPreviewProps> = ({
   tenant,
   owner
 }) => {
-  const theme = useTheme();
   const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
@@ -76,13 +75,13 @@ const AgreementPreview: React.FC<AgreementPreviewProps> = ({
       <Box mb={4}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>FINANCIAL CONSIDERATIONS:</Typography>
         <Grid container spacing={2}>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <Typography variant="body2">Monthly Rent: <strong>₹{financials.rent.toLocaleString()}</strong></Typography>
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <Typography variant="body2">Refundable Deposit: <strong>₹{financials.deposit.toLocaleString()}</strong></Typography>
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={{ xs: 6 }}>
             <Typography variant="body2">Rentora Bond Coverage: <strong>{financials.bondWeightage}%</strong></Typography>
           </Grid>
         </Grid>

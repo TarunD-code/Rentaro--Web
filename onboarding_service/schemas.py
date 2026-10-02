@@ -122,6 +122,19 @@ class SignatureRequest(BaseModel):
     agreement_id: int
 
 
+class SignatureSubmit(BaseModel):
+    """
+    Canvas e-sign submission from the frontend.
+    The signature_image_b64 is a base64-encoded PNG of the drawn signature
+    (data:image/png;base64,... prefix stripped before storage).
+    ip_address is populated server-side; clients pass user_agent only.
+    """
+    agreement_id: int
+    signer_role: str          # "tenant" or "owner"
+    signature_image_b64: str  # base64 PNG — stored as audit trail, never exposed in list APIs
+    user_agent: Optional[str] = None
+
+
 class SignatureOut(BaseModel):
     id: int
     agreement_id: int

@@ -17,8 +17,11 @@ SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"
 ALGORITHM = "HS256"
 SUBSCRIPTION_SERVICE_URL = "http://127.0.0.1:8000/subscriptions" # Via Gateway
 
-models.Base.metadata.create_all(bind=database.engine)
 app = FastAPI(title="Rentora Support Service", version="1.0.0")
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 # In-memory Priority Queues
 priority_queue = deque() # For premium tenants

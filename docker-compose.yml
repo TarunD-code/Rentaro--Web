@@ -1,0 +1,446 @@
+version: '3.8'
+
+services:
+  # ── INFRASTRUCTURE SERVICES ───────────────────────────────────────────────
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: rentora_postgres
+    environment:
+      POSTGRES_DB: rentora
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rentora_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rentora_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rentora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rentora_redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - rentora_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rentora_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Management portal dashboard
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - rentora_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_port_listener 5672"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── API GATEWAY ────────────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: gateway
+    container_name: rentora_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ENV=production
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  # ── MICROSERVICES ──────────────────────────────────────────────────────────
+  auth_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: auth_service
+    container_name: rentora_auth_service
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=auth
+      - REDIS_URL=redis://redis:6379/0
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  profile_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: profile_service
+    container_name: rentora_profile_service
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=profile
+      - REDIS_URL=redis://redis:6379/0
+      - ENV=production
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  property_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: property_service
+    container_name: rentora_property_service
+    ports:
+      - "8003:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=property
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ENV=production
+      - GEO_AMENITY_SERVICE_URL=http://geo_amenity_service:8000
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  payment_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: payment_service
+    container_name: rentora_payment_service
+    ports:
+      - "8004:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=payment
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  maintenance_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: maintenance_service
+    container_name: rentora_maintenance_service
+    ports:
+      - "8005:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=maintenance
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  onboarding_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: onboarding_service
+    container_name: rentora_onboarding_service
+    ports:
+      - "8006:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=onboarding
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  communication_service:
+    build:
+      context: ./communication_service
+      dockerfile: Dockerfile
+    container_name: rentora_communication_service
+    ports:
+      - "8007:8007"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=communication
+      - REDIS_URL=redis://redis:6379/0
+      - PORT=8007
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  agreements_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: agreements_service
+    container_name: rentora_agreements_service
+    ports:
+      - "8008:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=agreements
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  billing_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: billing_service
+    container_name: rentora_billing_service
+    ports:
+      - "8009:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=billing
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  owner_dashboard_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: owner_dashboard_service
+    container_name: rentora_owner_dashboard_service
+    ports:
+      - "8010:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=owner_dashboard
+      - ENV=production
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  subscription_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: subscription_service
+    container_name: rentora_subscription_service
+    ports:
+      - "8011:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=subscription
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  support_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: support_service
+    container_name: rentora_support_service
+    ports:
+      - "8012:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=support
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  notification_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: notification_service
+    container_name: rentora_notification_service
+    ports:
+      - "8013:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=notifications
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  geo_amenity_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: geo_amenity_service
+    container_name: rentora_geo_amenity_service
+    ports:
+      - "8014:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora
+      - DATABASE_SYNC_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ENV=production
+      - ORS_API_KEY=eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImQ2ZTM3Yzc3YzIyYzQwYjNhZjdkNjhjNzFmNDFjMjIyIiwiaCI6Im11cm11cjY0In0=
+      - OLA_MAPS_API_KEY=jnOZWBnoio9GwAA4Y2mspYFxnCdHjQ7yu9gj4hdz
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  search_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: search_service
+    container_name: rentora_search_service
+    ports:
+      - "8015:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora
+      - DATABASE_SYNC_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+  kyc_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: kyc_service
+    container_name: rentora_kyc_service
+    ports:
+      - "8016:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:rentora_secure_password@postgres:5432/rentora?currentSchema=kyc
+      - ENV=production
+      - KYC_ENCRYPTION_KEY=MCNaLFuKI3nNfldHrUwZW_99r8xAtul7I2grlsSrbbE=
+      - KYC_WEBHOOK_SECRET=rentora_kyc_webhook_dev_secret_key_32b
+      - JWT_SECRET_KEY=RENTORA_SUPER_SECRET_KEY
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rentora_network
+    restart: on-failure
+
+networks:
+  rentora_network:
+    name: rentora_network
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: rentora_postgres_data
+  redis_data:
+    name: rentora_redis_data
+  rabbitmq_data:
+    name: rentora_rabbitmq_data
+  uploads_data:
+    name: rentora_uploads_data

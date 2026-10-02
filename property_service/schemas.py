@@ -6,9 +6,19 @@ class PropertyCreate(BaseModel):
     title: str
     description: Optional[str] = None
     address: str
+    # Granular address fields for Bengaluru-biased geocoding.
+    # `address` is still the primary display string; these refine the geocode query.
+    area: Optional[str] = None       # e.g. "Koramangala 5th Block"
+    city: Optional[str] = "Bengaluru"
+    state: Optional[str] = "Karnataka"
+    pincode: Optional[str] = None    # 6-digit PIN
     property_type: Optional[str] = "Apartment"
     price: float
-    amenities: Optional[str] = None # e.g. "Pool, Gym, Parking"
+    amenities: Optional[str] = None  # e.g. "Pool, Gym, Parking"
+    # Callers MAY supply explicit coordinates (e.g. picked from a map widget).
+    # When present they take priority over geocoding.
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 class MediaItem(BaseModel):
     id: int
@@ -37,6 +47,7 @@ class GeoLocation(BaseModel):
 class AddressDetail(BaseModel):
     city: Optional[str]
     state: Optional[str]
+    full_address: Optional[str] = None
     country: str = "India"
     geo: Optional[GeoLocation]
 
@@ -49,7 +60,7 @@ class PropertyOut(BaseModel): # Listing card view
     property_type: Optional[str] = "Apartment"
     price: float
     amenities: Optional[str]
-    commute_score: Optional[float]
+    commute_score: Optional[float] = None
     created_at: datetime.datetime
     media: List[MediaItem] = []
 
@@ -65,7 +76,7 @@ class PropertyDetail(BaseModel): # Full detail view
     property_type: Optional[str] = "Apartment"
     address: AddressDetail
     amenities: List[str]
-    commute_score: Optional[float]
+    commute_score: Optional[float] = None
     average_rating: Optional[float] = 0.0
     reviews_count: Optional[int] = 0
     media: List[MediaItem]

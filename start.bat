@@ -25,6 +25,9 @@ start "Onboarding Service" cmd /k ".\venv\Scripts\activate && uvicorn onboarding
 echo Starting Communication Service on port 8007...
 start "Communication Service" cmd /k "cd communication_service && npm run start"
 
+echo Starting Agreements Service on port 8008...
+start "Agreements Service" cmd /k ".\venv\Scripts\activate && uvicorn agreements_service.main:app --host 127.0.0.1 --port 8008 --reload"
+
 echo Starting Billing Service on port 8009...
 start "Billing Service" cmd /k ".\venv\Scripts\activate && uvicorn billing_service.main:app --host 127.0.0.1 --port 8009 --reload"
 
@@ -36,6 +39,9 @@ start "Subscription Service" cmd /k ".\venv\Scripts\activate && uvicorn subscrip
 
 echo Starting Support Service on port 8012...
 start "Support Service" cmd /k ".\venv\Scripts\activate && uvicorn support_service.main:app --host 127.0.0.1 --port 8012 --reload"
+
+echo Starting Notification Service on port 8013...
+start "Notification Service" cmd /k ".\venv\Scripts\activate && uvicorn notification_service.main:app --host 127.0.0.1 --port 8013 --reload"
 
 echo Starting Vite Frontend...
 start "Frontend" cmd /k "cd frontend && npm run dev"

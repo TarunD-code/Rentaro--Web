@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import { Search, LocationOn } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { fetchSuggestions } from '../api/properties';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const HeroSearch: React.FC = () => {
@@ -25,9 +24,14 @@ const HeroSearch: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (query.trim()) {
-        const data = await fetchSuggestions(query);
-        setSuggestions(data);
-        setShowSuggestions(true);
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/search/autocomplete?q=${query}`);
+          const data = await res.json();
+          setSuggestions(data.suggestions || []);
+          setShowSuggestions(true);
+        } catch (e) {
+          console.error(e);
+        }
       } else {
         setSuggestions([]);
         setShowSuggestions(false);
@@ -36,10 +40,10 @@ const HeroSearch: React.FC = () => {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const handleSearch = (q: string, lat?: number, lon?: number) => {
+  const handleSearch = (q: string, lat?: number, lng?: number) => {
     let url = `/listings?q=${encodeURIComponent(q)}`;
-    if (lat !== undefined && lon !== undefined) {
-      url += `&lat=${lat}&lng=${lon}`;
+    if (lat !== undefined && lng !== undefined) {
+      url += `&lat=${lat}&lng=${lng}`;
     }
     navigate(url);
     setShowSuggestions(false);
@@ -114,11 +118,11 @@ const HeroSearch: React.FC = () => {
                 {suggestions.map((s, i) => (
                   <ListItemButton 
                     key={i} 
-                    onClick={() => handleSearch(s.name, s.lat, s.lon)}
+                    onClick={() => handleSearch(s.term, s.lat, s.lng)}
                     sx={{ py: 2, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) } }}
                   >
                     <LocationOn sx={{ mr: 2, color: 'text.secondary', fontSize: 20 }} />
-                    <ListItemText primary={s.name} />
+                    <ListItemText primary={s.term} />
                   </ListItemButton>
                 ))}
               </List>

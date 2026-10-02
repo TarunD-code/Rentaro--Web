@@ -20,6 +20,14 @@ const KYC_TYPES = [
 const OnboardingForm: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  
+  React.useEffect(() => {
+    const role = localStorage.getItem('role');
+    if (role === 'admin' || role === 'ADMIN') {
+      navigate('/admin/dashboard');
+    }
+  }, [navigate]);
+
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

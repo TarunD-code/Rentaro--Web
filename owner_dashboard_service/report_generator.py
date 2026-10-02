@@ -69,26 +69,46 @@ def generate_report_html(owner_id: str, metrics: list, report_type: str) -> str:
     """
     return html
 
+import shared_storage
+
 def generate_pdf_report(owner_id: str, metrics: list, report_type: str) -> Optional[str]:
-    """Generate PDF and save locally. Returns the relative file path."""
+    """Generate PDF, upload to centralized storage, and return the access URL."""
     html = generate_report_html(owner_id, metrics, report_type)
     
-    # Ensure directory exists
-    report_dir = "uploads/reports"
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir)
+    temp_dir = "temp_reports"
+    os.makedirs(temp_dir, exist_ok=True)
         
     filename = f"report_{owner_id}_{report_type}_{int(datetime.datetime.now().timestamp())}.pdf"
-    filepath = os.path.join(report_dir, filename)
+    filepath = os.path.join(temp_dir, filename)
+    file_key = f"reports/{filename}"
     
     try:
         from weasyprint import HTML
         HTML(string=html).write_pdf(filepath)
-        return f"/static/reports/{filename}"
+        
+        # Upload using centralized storage manager
+        with open(filepath, "rb") as f:
+            public_url = shared_storage.upload_file(f, file_key, "application/pdf")
+            
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            
+        return public_url
     except Exception as e:
         logger.error(f"Failed to generate PDF: {e}")
-        # Fallback: Save HTML for debugging/alternative
-        html_path = filepath.replace(".pdf", ".html")
-        with open(html_path, "w") as f:
-            f.write(html)
-        return f"/static/reports/{filename.replace('.pdf', '.html')}"
+        # Fallback: Save HTML temporarily and upload
+        html_filename = filename.replace(".pdf", ".html")
+        html_path = os.path.join(temp_dir, html_filename)
+        html_key = f"reports/{html_filename}"
+        try:
+            with open(html_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            with open(html_path, "rb") as f:
+                public_url = shared_storage.upload_file(f, html_key, "text/html")
+            if os.path.exists(html_path):
+                os.remove(html_path)
+            return public_url
+        except Exception as ex:
+            logger.error(f"Fallback HTML report generation failed: {ex}")
+            return None
+

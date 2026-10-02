@@ -20,8 +20,7 @@ import {
   AccountCircle, 
   Lock, 
   ArrowForward,
-  CheckCircleOutline,
-  AdminPanelSettings
+  CheckCircleOutline
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -190,12 +189,7 @@ const Register: React.FC = () => {
                             <Typography variant="caption" fontWeight={600}>{t('role_owner')}</Typography>
                           </Box>
                         </ToggleButton>
-                        <ToggleButton value="admin">
-                          <Box display="flex" flexDirection="column" alignItems="center">
-                            <AdminPanelSettings sx={{ mb: 0.5, fontSize: 24 }} />
-                            <Typography variant="caption" fontWeight={600}>Admin</Typography>
-                          </Box>
-                        </ToggleButton>
+                        {/* Admin role intentionally excluded — use scripts/create_superadmin.py */}
                       </ToggleButtonGroup>
                     </Box>
 

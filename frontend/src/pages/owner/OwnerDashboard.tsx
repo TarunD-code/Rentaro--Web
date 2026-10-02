@@ -9,10 +9,7 @@ import {
   Button, 
   useTheme, 
   alpha,
-  CircularProgress,
-  IconButton,
-  Menu,
-  MenuItem
+  CircularProgress
 } from '@mui/material';
 import { 
   TrendingUp, 
@@ -20,7 +17,6 @@ import {
   PendingActions, 
   FileDownload, 
   Star,
-  MoreVert,
   ArrowForward
 } from '@mui/icons-material';
 import { 
@@ -34,6 +30,7 @@ import {
   BarChart,
   Bar
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
 const OwnerDashboard: React.FC = () => {
@@ -41,7 +38,6 @@ const OwnerDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<any>(null);
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
     const fetchMetrics = async () => {
         setLoading(true);

@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Paper, alpha, useTheme, Card, CardContent } from '@mui/material';
+import { Box, Typography, Grid, Paper, alpha, useTheme, Card, CardContent, CircularProgress } from '@mui/material';
 import { TrendingUp, Visibility, Favorite, MapsUgc } from '@mui/icons-material';
-
-interface AnalyticsData {
-  total_views: number;
-  total_inquiries: number;
-  total_favorites: number;
-  average_rating: number;
-}
-
-interface HostAnalyticsProps {
-  metrics?: any;
-}
-
 import { 
   BarChart, 
   Bar, 
@@ -93,7 +81,7 @@ const HostAnalytics: React.FC<HostAnalyticsProps> = ({ metrics }) => {
     { label: "Profile Views", value: data.total_views, icon: <Visibility fontSize="small" />, color: theme.palette.primary.main },
     { label: "Message Inquiries", value: data.total_inquiries, icon: <MapsUgc fontSize="small" />, color: theme.palette.secondary.main },
     { label: "Saved Favorites", value: data.total_favorites, icon: <Favorite fontSize="small" />, color: theme.palette.error.main },
-    { label: "Average Rating", value: data.average_rating.toFixed(1), icon: <TrendingUp fontSize="small" />, color: theme.palette.success.main },
+    { label: "Average Rating", value: (data.average_rating || 0).toFixed(1), icon: <TrendingUp fontSize="small" />, color: theme.palette.success.main },
   ];
 
   const pieData = [
@@ -154,26 +142,28 @@ const HostAnalytics: React.FC<HostAnalyticsProps> = ({ metrics }) => {
         <Grid size={{ xs: 12, md: 4 }}>
           <Paper elevation={0} sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 6, textAlign: 'center' }}>
              <Typography variant="subtitle1" fontWeight={700} mb={1} align="left">Conversion Analysis</Typography>
-             <ResponsiveChart height={280}>
-                <PieChart>
-                    <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={8}
-                        dataKey="value"
-                    >
-                        <Cell fill={theme.palette.primary.main} />
-                        <Cell fill={alpha(theme.palette.primary.main, 0.1)} />
-                    </Pie>
-                    <Tooltip />
-                </PieChart>
-             </ResponsiveChart>
-             <Box mt={-12} mb={8}>
-                <Typography variant="h4" fontWeight={800}>{data.conversion_rate}%</Typography>
-                <Typography variant="caption" color="text.secondary">Inquiry Success</Typography>
+             <Box position="relative" height={280} display="flex" alignItems="center" justifyContent="center">
+                 <ResponsiveChart height={280}>
+                    <PieChart>
+                        <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={8}
+                            dataKey="value"
+                        >
+                            <Cell fill={theme.palette.primary.main} />
+                            <Cell fill={alpha(theme.palette.primary.main, 0.1)} />
+                        </Pie>
+                        <Tooltip />
+                    </PieChart>
+                 </ResponsiveChart>
+                 <Box position="absolute" display="flex" flexDirection="column" alignItems="center" sx={{ pointerEvents: 'none' }}>
+                    <Typography variant="h4" fontWeight={800} lineHeight={1}>{data.conversion_rate}%</Typography>
+                    <Typography variant="caption" color="text.secondary">Success</Typography>
+                 </Box>
              </Box>
           </Paper>
         </Grid>

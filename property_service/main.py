@@ -1,18 +1,60 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header, status
+from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Header, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.orm import Session
 import jwt
+import sys
+import os as _os
 from typing import List, Optional
 from sqlalchemy import func
+import logging
+import datetime
 
 from . import models, schemas, database
 from .media_processor import MediaProcessor
-from .location import provider as loc_provider
+from .location.ola_geocoder import geocode_address
 
-SECRET_KEY = "RENTORA_SUPER_SECRET_KEY"  
-ALGORITHM = "HS256"
+ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
-models.Base.metadata.create_all(bind=database.engine)
+from shared_rate_limiter import rate_limit
+
+SECRET_KEY = _os.environ.get("JWT_SECRET_KEY", "RENTORA_SUPER_SECRET_KEY")
+ALGORITHM  = "HS256"
+
+_IS_PROD = _os.environ.get("ENV", "").lower() == "production"
+_ALLOWED_ORIGINS = (
+    ["https://rentora.in", "https://www.rentora.in", "https://app.rentora.in"]
+    if _IS_PROD
+    else ["http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.5:5173"]
+)
+
 app = FastAPI(title="Rentora Property Service")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"]        = "DENY"
+    response.headers["X-XSS-Protection"]       = "1; mode=block"
+    response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
+    if _IS_PROD:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 def get_current_user_info(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -29,43 +71,105 @@ def get_current_user_info(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 def require_owner(user_info: dict = Depends(get_current_user_info)):
-    if user_info["role"] != "owner":
-        raise HTTPException(status_code=403, detail="Only owners can perform this action")
+    if user_info["role"] not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Only owners and admins can perform this action")
     return user_info
 
 @app.post("/", response_model=schemas.PropertyOut)
-def create_property(
+async def create_property(
     prop_data: schemas.PropertyCreate,
     user_info: dict = Depends(require_owner),
     db: Session = Depends(database.get_db)
 ):
+    # ── Resolve coordinates ────────────────────────────────────────────────
+    # Priority: caller-supplied lat/lng > Ola Maps geocode > None (stored as null)
+    resolved_lat: float | None = prop_data.lat
+    resolved_lng: float | None = prop_data.lng
+
+    if resolved_lat is None or resolved_lng is None:
+        geo_lat, geo_lng = await geocode_address(
+            address=prop_data.address,
+            area=prop_data.area or "",
+            city=prop_data.city or "Bengaluru",
+            pincode=prop_data.pincode or "",
+        )
+        if geo_lat is not None:
+            resolved_lat, resolved_lng = geo_lat, geo_lng
+            logging.info(
+                f"[PropertyCreate] Geocoded '{prop_data.address}' → "
+                f"({resolved_lat:.5f}, {resolved_lng:.5f})"
+            )
+        else:
+            logging.warning(
+                f"[PropertyCreate] Geocoding failed for '{prop_data.address}'. "
+                "Property will be stored without coordinates."
+            )
+
     new_prop = models.Property(
         owner_id=user_info["sub"],
         title=prop_data.title,
         description=prop_data.description,
         address=prop_data.address,
+        area=prop_data.area,
+        city=prop_data.city or "Bengaluru",
+        state=prop_data.state or "Karnataka",
+        country="India",
         property_type=prop_data.property_type,
         price=prop_data.price,
-        amenities=prop_data.amenities
+        amenities=prop_data.amenities,
+        lat=resolved_lat,
+        lng=resolved_lng,
     )
     db.add(new_prop)
     db.commit()
     db.refresh(new_prop)
+    
+    # Active Cache Invalidation and Event Publishing
+    try:
+        import shared_redis
+        shared_redis.invalidate_search_cache()
+        import shared_event_broker
+        shared_event_broker.publish_event(
+            "property.created",
+            {
+                "property_id": new_prop.id,
+                "title": new_prop.title,
+                "description": new_prop.description,
+                "address": new_prop.address,
+                "property_type": new_prop.property_type,
+                "price": new_prop.price,
+                "amenities": new_prop.amenities.split(",") if new_prop.amenities else [],
+                "status": new_prop.status,
+                "lat": new_prop.lat,
+                "lng": new_prop.lng
+            },
+            "property_service"
+        )
+    except Exception as ex:
+        logging.warning(f"Failed to invalidate search cache on property create: {ex}")
+        
     return new_prop
 
 @app.put("/properties/{property_id}/status")
 def update_property_status(
     property_id: int,
     data: dict,
+    user_info: dict = Depends(get_current_user_info),
     db: Session = Depends(database.get_db),
 ):
-    """Update property status (used by payment service for auto-relisting)."""
-    import logging
+    """Update property status — requires ownership or admin role."""
     logger = logging.getLogger("property_service")
 
     prop = db.query(models.Property).filter(models.Property.id == property_id).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
+
+    # IDOR guard: only the owner or an admin may change the listing status
+    if user_info["role"] != "admin" and prop.owner_id != user_info["sub"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to update this property.",
+        )
 
     new_status = data.get("status", "available")
     valid_statuses = ["available", "occupied", "maintenance", "unlisted"]
@@ -79,8 +183,27 @@ def update_property_status(
 
     db.commit()
     db.refresh(prop)
+    
+    # Active Cache Invalidation
+    try:
+        import shared_redis
+        shared_redis.delete(shared_redis.get_property_key(property_id))
+        shared_redis.invalidate_search_cache()
+        import shared_event_broker
+        shared_event_broker.publish_event(
+            "property.updated" if new_status != "unlisted" else "property.deleted",
+            {
+                "property_id": prop.id,
+                "status": prop.status
+            },
+            "property_service"
+        )
+    except Exception as ex:
+        logging.warning(f"Failed to invalidate caches on property status update: {ex}")
+        
     logger.info(f"Property #{property_id} status updated to '{new_status}'")
     return {"id": prop.id, "status": prop.status, "available_from": str(prop.available_from)}
+
 
 import math
 
@@ -111,10 +234,30 @@ def list_properties(
     limit: Optional[int] = 100,
     db: Session = Depends(database.get_db)
 ):
+    import json
+    import shared_redis
+    
+    # Construct distinct cache key based on query parameters
+    q_str = f"q:{q}|min:{min_price}|max:{max_price}|type:{property_type}|amenities:{amenities}|featured:{featured}|verified:{verified}|near:{near_lat},{near_lng}|limit:{limit}"
+    cache_key = shared_redis.get_search_key(q_str)
+    
+    try:
+        cached_val = shared_redis.get(cache_key)
+        if cached_val:
+            return json.loads(cached_val)
+    except Exception as ex:
+        logging.warning(f"Failed to read search cache: {ex}")
+        
     query = db.query(models.Property)
     
     if q:
-        query = query.filter(models.Property.title.contains(q) | models.Property.address.contains(q))
+        query = query.filter(
+            models.Property.title.contains(q) | 
+            models.Property.address.contains(q) |
+            models.Property.area.contains(q) |
+            models.Property.city.contains(q) |
+            models.Property.state.contains(q)
+        )
     if min_price is not None:
         query = query.filter(models.Property.price >= min_price)
     if max_price is not None:
@@ -135,17 +278,35 @@ def list_properties(
     if pet_friendly is not None:
         query = query.filter(models.Property.is_pet_friendly == pet_friendly)
         
+    query = query.order_by(models.Property.is_featured.desc(), models.Property.created_at.desc())
     properties = query.all()
 
-    # Manual Distance Filter (Haversine) - Since SQLite lacks native spatial indices
+    # PostGIS Spatial Filter (replaces legacy haversine calculation)
     if near_lat is not None and near_lng is not None:
-        filtered = []
-        for p in properties:
-            if p.lat and p.lng:
-                dist = haversine_distance(near_lat, near_lng, p.lat, p.lng)
-                if dist <= max_dist_km:
-                    filtered.append(p)
-        properties = filtered
+        try:
+            from sqlalchemy import text as sql_text
+            # Use PostGIS ST_DWithin for index-accelerated proximity search
+            radius_m = max_dist_km * 1000
+            spatial_ids = db.execute(sql_text("""
+                SELECT id FROM property.properties
+                WHERE geom IS NOT NULL
+                  AND ST_DWithin(
+                      geom::geography,
+                      ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+                      :radius
+                  )
+            """), {"lat": near_lat, "lng": near_lng, "radius": radius_m}).fetchall()
+            valid_ids = {r[0] for r in spatial_ids}
+            properties = [p for p in properties if p.id in valid_ids]
+        except Exception as spatial_err:
+            logging.warning(f"PostGIS spatial filter unavailable ({spatial_err}), using haversine fallback")
+            filtered = []
+            for p in properties:
+                if p.lat and p.lng:
+                    dist = haversine_distance(near_lat, near_lng, p.lat, p.lng)
+                    if dist <= max_dist_km:
+                        filtered.append(p)
+            properties = filtered
 
     results = []
     for prop in properties[:limit]:
@@ -161,7 +322,6 @@ def list_properties(
                 "size": m.size
             })
             
-        # Manually map to handle MediaItem field mismatches (url vs raw_url, etc.)
         try:
             results.append({
                 "id": prop.id,
@@ -171,92 +331,89 @@ def list_properties(
                 "address": prop.address,
                 "property_type": prop.property_type,
                 "price": prop.price,
-                "amenities": prop.amenities,
+                "amenities": prop.amenities or "",
                 "commute_score": prop.commute_score,
-                "created_at": prop.created_at,
+                "created_at": prop.created_at.isoformat() if prop.created_at else None,
                 "media": media_items
             })
         except Exception as e:
             logging.error(f"[PropertyService] Failed to map property {prop.id}: {str(e)}")
             continue
+            
+    # Save search result to cache for 10 minutes (600s)
+    try:
+        shared_redis.set(cache_key, json.dumps(results), ttl=600)
+    except Exception as ex:
+        logging.warning(f"Failed to write search cache: {ex}")
         
     return results
 
-@app.get("/{property_id}", response_model=schemas.PropertyDetail)
-def get_property_detail(
-    property_id: int,
-    db: Session = Depends(database.get_db)
-):
-    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
-    if not prop:
-        raise HTTPException(status_code=404, detail="Property not found")
-        
-    # Mock address detail from string
-    address_detail = {
-        "city": prop.city or "Mumbai",
-        "state": prop.state or "Maharashtra",
-        "country": prop.country or "India",
-        "geo": {"lat": prop.lat or 19.0760, "lng": prop.lng or 72.8777}
-    }
-    
-    # Mock host info (In production, fetch from profile_service)
-    host_info = {
-        "id": prop.owner_id,
-        "name": "Trusted Host",
-        "verified": True,
-        "responseTime": "Within 1h"
-    }
 
-    # Format media to match MediaItem schema
-    media_items = []
-    for m in prop.media:
-        media_items.append({
-            "id": m.id,
-            "type": m.file_type or "image",
-            "url": m.raw_url,
-            "thumbnailUrl": m.thumb_url,
-            "mime": m.mime_type,
-            "size": m.size
-        })
 
-    # Get Reviews aggregation
-    avg_rating = db.query(func.avg(models.Review.rating)).filter(models.Review.property_id == property_id).scalar() or 0.0
-    reviews_count = db.query(func.count(models.Review.id)).filter(models.Review.property_id == property_id).scalar() or 0
 
-    return {
-        "id": prop.id,
-        "title": prop.title,
-        "description": prop.description,
-        "price": prop.price,
-        "currency": prop.currency or "INR",
-        "property_type": prop.property_type or "Apartment",
-        "address": address_detail,
-        "amenities": prop.amenities.split(",") if prop.amenities else [],
-        "average_rating": float(avg_rating),
-        "reviews_count": reviews_count,
-        "media": media_items,
-        "host": host_info,
-        "createdAt": prop.created_at,
-        "updatedAt": prop.updated_at
-    }
 
 import httpx
 import random
 
 @app.get("/search/suggestions")
 async def get_suggestions(q: str):
-    return await loc_provider.autocomplete(q)
+    from .location.maptiler import MaptilerProvider
+    provider = MaptilerProvider()
+    return await provider.autocomplete(q)
 
 @app.get("/location/pois")
 async def get_property_pois(lat: float, lng: float):
-    # Fetch POIs securely through provider
-    pois = await loc_provider.fetch_pois(lat, lng)
-    
-    # Pre-calculate simple routing for each POI
+    import os
+    # Use env var for Docker, fall back to localhost:8014 for local dev
+    geo_service_url = os.environ.get("GEO_AMENITY_SERVICE_URL", "http://localhost:8014")
+    # Fetch POIs from geo_amenity_service using smart per-category radius
+    # (no explicit radius= param → geo service applies 2 km baseline with
+    #  5 km for hospitals/offices and auto-expansion fallback for empty results)
+    pois = []
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{geo_service_url}/amenities/nearby?lat={lat}&lng={lng}",
+                timeout=25.0
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_amenities = data.get("amenities", [])
+                for a in raw_amenities:
+                    pois.append({
+                        "name": a["name"],
+                        # Coordinates from Overpass are already (lat, lng) — pass through unchanged
+                        "lat": a["lat"],
+                        "lng": a["lng"],
+                        "category": a["category"],
+                        "distance": a.get("distance_m", 0)
+                    })
+    except Exception as e:
+        import traceback
+        print(f"Error fetching POIs from geo_amenity_service (type={type(e)}): {e}")
+        traceback.print_exc()
+        print("Falling back to provider POIs.")
+
+    # Fallback to maptiler provider if geo_amenity_service returned empty or failed
+    if not pois:
+        from .location.maptiler import MaptilerProvider
+        fallback_provider = MaptilerProvider()
+        pois = await fallback_provider.fetch_pois(lat, lng)
+
+    # Select diverse POIs: up to 3 per category, max 30 total
+    category_counts: dict = {}
+    diverse_pois = []
     for p in pois:
-        route = await loc_provider.get_route((lat, lng), (p["lat"], p["lng"]))
-        p["route"] = route
-        
+        cat = p.get("category", "other")
+        count = category_counts.get(cat, 0)
+        if count < 3:
+            diverse_pois.append(p)
+            category_counts[cat] = count + 1
+        if len(diverse_pois) >= 30:
+            break
+    pois = diverse_pois
+
+    # Routes are fetched on-demand by the frontend via /geo/commute/route
     return {"pois": pois}
 
 
@@ -408,18 +565,40 @@ def get_host_analytics(
 
 @app.get("/metrics", response_model=schemas.DashboardMetricsOut)
 def get_dashboard_metrics(
+    owner_id: Optional[str] = None,
+    date_range: Optional[str] = None,
     user_info: dict = Depends(get_current_user_info),
     db: Session = Depends(database.get_db)
 ):
-    role = user_info["role"]
-    user_id = user_info["sub"]
+    role    = user_info["role"]
+    caller  = user_info["sub"]
+
+    # IDOR guard: non-admin callers may only request their own metrics.
+    # Silently ignore the owner_id param for non-admins and force it to self.
+    if role != "admin" and owner_id and owner_id != caller:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorised to view another user's metrics.",
+        )
+
+    user_id = (owner_id if owner_id else caller) if role == "admin" else caller
     logging.info(f"[PropertyService] Calculating metrics for role: {role}, user: {user_id}")
     
     try:
+        # Filtering logic
         if role == "admin":
-            total_listings = db.query(func.count(models.Property.id)).scalar()
-            total_views = total_listings * 312 # Weighted mock scale
-            total_apps = db.query(func.count(models.VisitRequest.id)).scalar()
+            base_query = db.query(func.count(models.Property.id))
+            if owner_id:
+                base_query = base_query.filter(models.Property.owner_id == user_id)
+            total_listings = base_query.scalar()
+            
+            total_views = total_listings * 312 
+            
+            apps_query = db.query(func.count(models.VisitRequest.id))
+            if owner_id:
+                apps_query = apps_query.filter(models.VisitRequest.owner_id == user_id)
+            total_apps = apps_query.scalar()
+            
             pending_rent = 1450000.0 # Aggregate mock
         elif role == "owner":
             properties = db.query(models.Property).filter(models.Property.owner_id == user_id).all()
@@ -454,9 +633,15 @@ def get_dashboard_metrics(
 
 @app.post("/visits", response_model=schemas.VisitRequestOut)
 def request_visit(
+    request: Request,
     visit_data: schemas.VisitRequestCreate,
     user_info: dict = Depends(get_current_user_info),
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    _rl: None = Depends(rate_limit(
+        "book_visit", max_calls=10, window_seconds=3600,  # 10/hr per user
+        key_fn="user",
+        detail="Visit booking limit reached. You may book up to 10 visits per hour.",
+    )),
 ):
     # Verify property exists
     prop = db.query(models.Property).filter(models.Property.id == visit_data.property_id).first()
@@ -642,4 +827,104 @@ def list_user_agreements(
         (models.RentalAgreement.owner_id == user_info["sub"])
     ).all()
 
+
+@app.get("/{property_id}", response_model=schemas.PropertyDetail)
+def get_property_detail(
+    property_id: int,
+    db: Session = Depends(database.get_db)
+):
+    import json
+    import shared_redis
+    
+    cache_key = shared_redis.get_property_key(property_id)
+    try:
+        cached_val = shared_redis.get(cache_key)
+        if cached_val:
+            return json.loads(cached_val)
+    except Exception as ex:
+        logging.warning(f"Failed to read property detail cache: {ex}")
+
+    prop = db.query(models.Property).filter(models.Property.id == property_id).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+        
+    # Mock address detail from string
+    address_detail = {
+        "city": prop.city or "Mumbai",
+        "state": prop.state or "Maharashtra",
+        "full_address": prop.address,
+        "country": prop.country or "India",
+        "geo": {"lat": prop.lat or 19.0760, "lng": prop.lng or 72.8777}
+    }
+    
+    # Mock host info (In production, fetch from profile_service)
+    host_info = {
+        "id": prop.owner_id,
+        "name": "Trusted Host",
+        "verified": True,
+        "responseTime": "Within 1h"
+    }
+
+    # Format media to match MediaItem schema
+    media_items = []
+    for m in prop.media:
+        media_items.append({
+            "id": m.id,
+            "type": m.file_type or "image",
+            "url": m.raw_url,
+            "thumbnailUrl": m.thumb_url,
+            "mime": m.mime_type,
+            "size": m.size
+        })
+
+    # Get Reviews aggregation
+    avg_rating = db.query(func.avg(models.Review.rating)).filter(models.Review.property_id == property_id).scalar() or 0.0
+    reviews_count = db.query(func.count(models.Review.id)).filter(models.Review.property_id == property_id).scalar() or 0
+
+    res_dict = {
+        "id": prop.id,
+        "title": prop.title,
+        "description": prop.description,
+        "price": prop.price,
+        "currency": prop.currency or "INR",
+        "property_type": prop.property_type or "Apartment",
+        "address": address_detail,
+        "amenities": prop.amenities.split(",") if prop.amenities else [],
+        "average_rating": float(avg_rating),
+        "reviews_count": reviews_count,
+        "media": media_items,
+        "host": host_info,
+        "createdAt": prop.created_at.isoformat() if prop.created_at else None,
+        "updatedAt": prop.updated_at.isoformat() if prop.updated_at else None
+    }
+    
+    # Save property detail to cache for 1 hour (3600s)
+    try:
+        shared_redis.set(cache_key, json.dumps(res_dict), ttl=3600)
+    except Exception as ex:
+        logging.warning(f"Failed to write property detail cache: {ex}")
+        
+    return res_dict
+
+
+from pydantic import BaseModel
+
+class InternalEvent(BaseModel):
+    topic: str
+    value: dict
+
+@app.post("/internal/events")
+def handle_internal_event(
+    event: InternalEvent,
+    db: Session = Depends(database.get_db)
+):
+    if event.topic == "featured-listing-purchases":
+        property_id = event.value.get("property_id")
+        if property_id:
+            prop = db.query(models.Property).filter(models.Property.id == property_id).first()
+            if prop:
+                prop.is_featured = True
+                db.commit()
+                logging.info(f"Property {property_id} is now featured via internal event.")
+    return {"status": "ok"}
 

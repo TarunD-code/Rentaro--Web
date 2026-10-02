@@ -43,6 +43,7 @@ const VerifyOTP: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (otp.length < 6) return;
     setLoading(true);
     setError(null);
     try {
@@ -184,12 +185,37 @@ const VerifyOTP: React.FC = () => {
                       
                       <Button 
                         type="submit" 
-                        variant="contained" 
+                        variant={otp.length === 6 ? "contained" : "outlined"} 
                         size="large" 
                         fullWidth
-                        disabled={loading || otp.length < 6}
+                        disabled={loading}
                         endIcon={loading ? <CircularProgress size={20} color="inherit" /> : <ArrowForward />}
-                        sx={{ height: 52 }}
+                        className={otp.length === 6 ? "bg-[#00467F] text-white" : "border-2 border-[#00467F] text-[#00467F] bg-transparent"}
+                        sx={
+                          otp.length === 6
+                            ? { 
+                                height: 52, 
+                                py: 1.5, 
+                                borderRadius: 3, 
+                                textTransform: 'none', 
+                                fontWeight: 700, 
+                                bgcolor: '#00467F', 
+                                color: 'white', 
+                                '&:hover': { bgcolor: '#00335c' } 
+                              }
+                            : { 
+                                height: 52, 
+                                py: 1.5, 
+                                borderRadius: 3, 
+                                textTransform: 'none', 
+                                fontWeight: 600, 
+                                bgcolor: 'transparent', 
+                                border: '2px solid #00467F', 
+                                borderColor: '#00467F',
+                                color: '#00467F', 
+                                '&:hover': { bgcolor: 'rgba(0, 70, 127, 0.05)', border: '2px solid #00467F' } 
+                              }
+                        }
                       >
                         {t('verify_btn')}
                       </Button>

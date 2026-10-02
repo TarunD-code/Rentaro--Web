@@ -79,6 +79,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ currentUser, receiverId }
         }
       });
 
+      newSocket.on('receive_message', (msg: Message) => {
+        setMessages((prev) => [...prev, msg]);
+      });
+
       setSocket(newSocket);
     } catch (err) {
       console.error("Socket Initialization Failed:", err);

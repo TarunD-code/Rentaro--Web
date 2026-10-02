@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 interface ProtectedRouteProps {
-  children: JSX.Element;
+  children: React.ReactElement;
   allowedRoles?: string[];
 }
 

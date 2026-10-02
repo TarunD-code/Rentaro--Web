@@ -5,8 +5,9 @@
   z-index: 0 !important;
 }
 
-.map-canvas, 
-.leaflet-container, 
+.map-canvas,
+.leaflet-container,
+.maplibregl-canvas-container,
 .mapboxgl-canvas {
   z-index: 0 !important;
   position: relative !important;
@@ -28,12 +29,32 @@
   pointer-events: auto;
 }
 
-/* Custom Marker styles to ensure they don't fight for z-index */
-.leaflet-pane {
-  z-index: 400 !important;
+/* MapLibre GL marker and popup styles */
+.maplibregl-popup-content {
+  border-radius: 12px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
 }
 
-.leaflet-top, 
-.leaflet-bottom {
-  z-index: 500 !important;
+.maplibregl-popup-close-button {
+  font-size: 18px;
+  padding: 4px 8px;
+  color: #64748b;
+  z-index: 10;
+}
+
+.maplibregl-ctrl-group {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.rentora-property-marker {
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.rentora-property-marker:hover {
+  transform: scale(1.15);
+  z-index: 100 !important;
 }

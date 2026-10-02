@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import { motion } from 'framer-motion';
 import AdminDashboard from '../../components/dashboards/AdminDashboard';
+import { api } from '../../services/api';
 
 const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
