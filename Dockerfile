@@ -33,7 +33,8 @@ COPY shared_database.py /app/shared_database.py
 COPY shared_redis.py /app/shared_redis.py
 COPY shared_storage.py /app/shared_storage.py
 COPY shared_event_broker.py /app/shared_event_broker.py
-COPY .env /app/.env
+# Environment variables are injected securely at runtime (e.g. Render / Production PaaS)
+# COPY .env /app/.env
 
 # Copy specific service directory inside container
 ARG SERVICE_NAME
